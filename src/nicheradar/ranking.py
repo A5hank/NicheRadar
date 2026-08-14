@@ -84,11 +84,11 @@ def rank_videos(
     videos: list[Video],
     *,
     as_of: datetime,
-    limit: int = 50,
+    limit: int | None = 50,
 ) -> list[ScoredVideo]:
     """Score stored videos and rank them by view velocity."""
 
-    if limit < 1:
+    if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1")
 
     scored_videos = [
@@ -100,5 +100,8 @@ def rank_videos(
     ]
 
     ranked_videos = rank_scored_videos(scored_videos)
+
+    if limit is None:
+        return ranked_videos
 
     return ranked_videos[:limit]

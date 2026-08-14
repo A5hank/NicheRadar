@@ -3,7 +3,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from nicheradar.models import Channel, Snapshot, Video
 
@@ -142,18 +142,26 @@ def get_videos_by_niche(
     *,
     niche: str,
     collected_date: date | None = None,
-    limit: int = 50,
+    limit: int | None = 50,
 ) -> list[Video]:
     """Return video observations ordered by highest view count."""
 
-    if limit < 1:
+    if limit is not None and limit < 1:
         raise ValueError("limit must be at least 1")
 
-    statement = select(Video).where(Video.niche == niche).order_by(Video.views.desc()).limit(limit)
+    statement = (
+        select(Video)
+        .options(selectinload(Video.channel))
+        .where(Video.niche == niche)
+        .order_by(Video.views.desc())
+    )
 
     if collected_date is not None:
         statement = statement.where(
             Video.collected_date == collected_date,
         )
+
+    if limit is not None:
+        statement = statement.limit(limit)
 
     return list(session.scalars(statement))
