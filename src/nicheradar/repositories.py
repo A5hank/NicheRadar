@@ -13,7 +13,8 @@ def upsert_channel(
     *,
     channel_id: str,
     channel_name: str,
-    subscriber_count: int,
+    subscriber_count: int | None,
+    video_count: int | None = None,
 ) -> tuple[Channel, bool]:
     """Create a channel or update its latest metadata."""
 
@@ -25,11 +26,13 @@ def upsert_channel(
             channel_id=channel_id,
             channel_name=channel_name,
             subscriber_count=subscriber_count,
+            video_count=video_count,
         )
         session.add(channel)
     else:
         channel.channel_name = channel_name
         channel.subscriber_count = subscriber_count
+        channel.video_count = video_count
 
     session.flush()
 
@@ -44,13 +47,14 @@ def upsert_video_observation(
     url: str,
     channel_id: str,
     views: int,
-    likes: int,
-    comments: int,
-    subscribers: int,
+    likes: int | None,
+    comments: int | None,
+    subscribers: int | None,
     duration_seconds: int,
     upload_date: datetime,
     niche: str,
     collected_date: date,
+    tags: tuple[str, ...] = (),
 ) -> tuple[Video, bool]:
     """Create or update one daily video observation."""
 
@@ -73,6 +77,7 @@ def upsert_video_observation(
             comments=comments,
             subscribers=subscribers,
             duration_seconds=duration_seconds,
+            tags=list(tags),
             upload_date=upload_date,
             niche=niche,
             collected_date=collected_date,
@@ -87,6 +92,7 @@ def upsert_video_observation(
         video.comments = comments
         video.subscribers = subscribers
         video.duration_seconds = duration_seconds
+        video.tags = list(tags)
         video.upload_date = upload_date
 
     session.flush()

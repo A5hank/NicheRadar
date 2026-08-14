@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     CheckConstraint,
     Date,
@@ -59,8 +60,12 @@ class Channel(Base):
     __tablename__ = "channels"
     __table_args__ = (
         CheckConstraint(
-            "subscriber_count >= 0",
+            ("subscriber_count IS NULL OR subscriber_count >= 0"),
             name="non_negative_subscriber_count",
+        ),
+        CheckConstraint(
+            "video_count IS NULL OR video_count >= 0",
+            name="non_negative_video_count",
         ),
     )
 
@@ -71,7 +76,10 @@ class Channel(Base):
     channel_name: Mapped[str] = mapped_column(
         String(255),
     )
-    subscriber_count: Mapped[int] = mapped_column(
+    subscriber_count: Mapped[int | None] = mapped_column(
+        BigInteger,
+    )
+    video_count: Mapped[int | None] = mapped_column(
         BigInteger,
     )
     last_updated: Mapped[datetime] = mapped_column(
@@ -101,15 +109,15 @@ class Video(Base):
             name="non_negative_views",
         ),
         CheckConstraint(
-            "likes >= 0",
+            "likes IS NULL OR likes >= 0",
             name="non_negative_likes",
         ),
         CheckConstraint(
-            "comments >= 0",
+            "comments IS NULL OR comments >= 0",
             name="non_negative_comments",
         ),
         CheckConstraint(
-            "subscribers >= 0",
+            "subscribers IS NULL OR subscribers >= 0",
             name="non_negative_subscribers",
         ),
         CheckConstraint(
@@ -147,16 +155,21 @@ class Video(Base):
     views: Mapped[int] = mapped_column(
         BigInteger,
     )
-    likes: Mapped[int] = mapped_column(
+    likes: Mapped[int | None] = mapped_column(
         BigInteger,
     )
-    comments: Mapped[int] = mapped_column(
+    comments: Mapped[int | None] = mapped_column(
         BigInteger,
     )
-    subscribers: Mapped[int] = mapped_column(
+    subscribers: Mapped[int | None] = mapped_column(
         BigInteger,
     )
     duration_seconds: Mapped[int] = mapped_column()
+
+    tags: Mapped[list[str]] = mapped_column(
+        JSON,
+        default=list,
+    )
 
     upload_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
