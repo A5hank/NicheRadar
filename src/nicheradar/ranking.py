@@ -57,13 +57,36 @@ def score_video(
     )
 
 
+def scored_video_velocity_sort_key(
+    video: ScoredVideo,
+) -> tuple[float, int, str]:
+    """Build a deterministic view-velocity sorting key."""
+
+    return (
+        -video.metrics.views_per_day,
+        -video.views,
+        video.video_id,
+    )
+
+
+def rank_scored_videos(
+    videos: list[ScoredVideo],
+) -> list[ScoredVideo]:
+    """Return scored videos ordered by view velocity."""
+
+    return sorted(
+        videos,
+        key=scored_video_velocity_sort_key,
+    )
+
+
 def rank_videos(
     videos: list[Video],
     *,
     as_of: datetime,
     limit: int = 50,
 ) -> list[ScoredVideo]:
-    """Score videos and rank them by view velocity."""
+    """Score stored videos and rank them by view velocity."""
 
     if limit < 1:
         raise ValueError("limit must be at least 1")
@@ -76,12 +99,6 @@ def rank_videos(
         for video in videos
     ]
 
-    scored_videos.sort(
-        key=lambda video: (
-            -video.metrics.views_per_day,
-            -video.views,
-            video.video_id,
-        )
-    )
+    ranked_videos = rank_scored_videos(scored_videos)
 
-    return scored_videos[:limit]
+    return ranked_videos[:limit]
