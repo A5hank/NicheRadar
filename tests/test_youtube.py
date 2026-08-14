@@ -8,7 +8,9 @@ import pytest
 from nicheradar.youtube import (
     YouTubeAPIError,
     YouTubeClient,
+    YouTubeMetadataError,
     format_rfc3339_utc,
+    parse_iso8601_duration,
 )
 
 
@@ -147,3 +149,157 @@ def test_api_error_does_not_expose_key() -> None:
 
     assert "API key not valid" in message
     assert "super-secret-key" not in message
+
+
+@pytest.mark.parametrize(
+    ("duration", "expected_seconds"),
+    [
+        ("PT58S", 58),
+        ("PT1M12S", 72),
+        ("PT2H3M4S", 7_384),
+        ("P1DT2H", 93_600),
+    ],
+)
+def test_parse_iso8601_duration(
+    duration: str,
+    expected_seconds: int,
+) -> None:
+    """ISO 8601 durations should become total seconds."""
+
+    assert parse_iso8601_duration(duration) == expected_seconds
+
+
+def test_invalid_duration_is_rejected() -> None:
+    """Malformed YouTube durations should be rejected."""
+
+    with pytest.raises(
+        YouTubeMetadataError,
+        match="Invalid YouTube duration",
+    ):
+        parse_iso8601_duration("one minute")
+
+
+def test_fetches_video_and_channel_details() -> None:
+    """The client should fetch and parse public metadata."""
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        if request.url.path.endswith("/videos"):
+            assert request.url.params["part"] == "snippet,contentDetails,statistics"
+            assert request.url.params["id"] == "video-123"
+
+            return httpx.Response(
+                200,
+                json={
+                    "items": [
+                        {
+                            "id": "video-123",
+                            "snippet": {
+                                "title": ("AI &amp; Automation"),
+                                "channelId": "channel-123",
+                                "channelTitle": ("Practical AI"),
+                                "publishedAt": ("2026-08-13T12:00:00Z"),
+                                "tags": [
+                                    "AI",
+                                    "automation",
+                                ],
+                            },
+                            "contentDetails": {
+                                "duration": "PT1M12S",
+                            },
+                            "statistics": {
+                                "viewCount": "800000",
+                                "likeCount": "42000",
+                                "commentCount": "1200",
+                            },
+                        }
+                    ]
+                },
+            )
+
+        if request.url.path.endswith("/channels"):
+            assert request.url.params["part"] == "snippet,statistics"
+            assert request.url.params["id"] == "channel-123"
+
+            return httpx.Response(
+                200,
+                json={
+                    "items": [
+                        {
+                            "id": "channel-123",
+                            "snippet": {
+                                "title": "Practical AI",
+                            },
+                            "statistics": {
+                                "subscriberCount": "5000",
+                                "videoCount": "120",
+                                "hiddenSubscriberCount": False,
+                            },
+                        }
+                    ]
+                },
+            )
+
+        raise AssertionError(f"Unexpected endpoint: {request.url.path}")
+
+    transport = httpx.MockTransport(handler)
+
+    with YouTubeClient(
+        "test-api-key",
+        transport=transport,
+    ) as client:
+        videos = client.fetch_video_details(["video-123"])
+        channels = client.fetch_channel_details(["channel-123"])
+
+    video = videos[0]
+    channel = channels[0]
+
+    assert video.title == "AI & Automation"
+    assert video.duration_seconds == 72
+    assert video.view_count == 800_000
+    assert video.like_count == 42_000
+    assert video.comment_count == 1_200
+    assert video.tags == ("AI", "automation")
+    assert video.is_short_candidate is True
+
+    assert channel.channel_title == "Practical AI"
+    assert channel.subscriber_count == 5_000
+    assert channel.video_count == 120
+    assert channel.hidden_subscriber_count is False
+
+
+def test_hidden_subscriber_count_becomes_none() -> None:
+    """Hidden subscriber counts must not be treated as zero."""
+
+    def handler(
+        _request: httpx.Request,
+    ) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "items": [
+                    {
+                        "id": "hidden-channel",
+                        "snippet": {
+                            "title": "Private Creator",
+                        },
+                        "statistics": {
+                            "videoCount": "25",
+                            "hiddenSubscriberCount": True,
+                        },
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with YouTubeClient(
+        "test-api-key",
+        transport=transport,
+    ) as client:
+        channels = client.fetch_channel_details(["hidden-channel"])
+
+    assert channels[0].subscriber_count is None
+    assert channels[0].hidden_subscriber_count is True
