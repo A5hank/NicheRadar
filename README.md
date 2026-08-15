@@ -37,7 +37,7 @@ Phase 1: Project foundation.
 - Pandas, NumPy, and scikit-learn
 - Sentence Transformers
 - Groq API
-- Streamlit
+- FastAPI with a plan HTML, CSS and JavaScript frontend
 
 ## Development setup
 
