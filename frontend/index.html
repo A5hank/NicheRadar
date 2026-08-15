@@ -43,9 +43,11 @@
               autocomplete="off"
               autofocus
             />
-            <button id="analyse-button" type="submit">
-              <span id="analyse-button-label">Analyse</span>
-              <span class="analyse-button-arrow" aria-hidden="true">&rarr;</span>
+            <button id="start-analysis-button" type="submit">
+              <span id="start-analysis-button-label" class="start-analysis-label">
+                Analyse
+              </span>
+              <span class="button-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </form>
 
@@ -99,7 +101,7 @@
               <p id="review-error" class="form-error review-error" role="alert"></p>
 
               <button id="run-analysis-button" class="run-analysis-button" type="submit">
-                Use these queries
+                <span id="run-analysis-button-label">Use these queries</span>
                 <span aria-hidden="true">&rarr;</span>
               </button>
             </form>
@@ -164,21 +166,21 @@
               <span class="stat-icon mixed-icon" aria-hidden="true">&#9673;</span>
               <div>
                 <p>Videos considered</p>
-                <strong>248</strong>
+                <strong id="videos-considered-count">0</strong>
               </div>
             </article>
             <article class="stat-card breakout-stat">
               <span class="stat-icon breakout-icon" aria-hidden="true">&#8599;</span>
               <div>
                 <p>Breakout highlights</p>
-                <strong>18</strong>
+                <strong id="breakout-count">0</strong>
               </div>
             </article>
             <article class="stat-card exceptional-stat">
               <span class="stat-icon exceptional-icon" aria-hidden="true">&#9733;</span>
               <div>
                 <p>Exceptional highlights</p>
-                <strong>4</strong>
+                <strong id="exceptional-count">0</strong>
               </div>
             </article>
           </section>

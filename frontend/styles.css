@@ -479,6 +479,13 @@ button {
   opacity: 0.42;
 }
 
+.review-query-item input:disabled,
+.remove-query-button:disabled,
+.quiet-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .dashboard-view {
   display: grid;
   min-height: 100vh;
@@ -784,10 +791,9 @@ button {
 .table-header,
 .result-row {
   display: grid;
-  grid-template-columns: 55px minmax(260px, 2.3fr) repeat(
-      4,
-      minmax(82px, 0.72fr)
-    ) 62px;
+  grid-template-columns:
+    55px minmax(260px, 2.3fr) repeat(4, minmax(82px, 0.72fr))
+    62px;
   align-items: center;
   gap: 0.8rem;
 }
@@ -912,6 +918,16 @@ button {
   text-decoration: underline;
 }
 
+.empty-results {
+  margin: 0;
+  padding: 2.5rem 1.5rem;
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
 @media (max-width: 1050px) {
   .dashboard-view {
     grid-template-columns: 190px minmax(0, 1fr);
@@ -922,10 +938,9 @@ button {
   }
 
   .result-row {
-    grid-template-columns: 42px minmax(220px, 1fr) repeat(
-        3,
-        minmax(72px, 0.55fr)
-      ) 62px;
+    grid-template-columns:
+      42px minmax(220px, 1fr) repeat(3, minmax(72px, 0.55fr))
+      62px;
   }
 
   .result-row > span:nth-of-type(4) {
@@ -1013,7 +1028,11 @@ button {
     font-size: 0;
   }
 
-  .niche-form .analyse-button-arrow {
+  .niche-form button .start-analysis-label {
+    display: none;
+  }
+
+  .niche-form button .button-arrow {
     font-size: 1.2rem;
   }
 
