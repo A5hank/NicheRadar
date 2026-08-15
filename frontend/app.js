@@ -6,6 +6,12 @@ const dashboardView = document.querySelector("#dashboard-view");
 const nicheForm = document.querySelector("#niche-form");
 const nicheInput = document.querySelector("#niche-input");
 const formError = document.querySelector("#form-error");
+const analyseButton = document.querySelector(
+  "#analyse-button",
+);
+const analyseButtonLabel = document.querySelector(
+  "#analyse-button-label",
+);
 const queryReviewForm = document.querySelector("#query-review-form");
 const reviewNiche = document.querySelector("#review-niche");
 const queryCount = document.querySelector("#query-count");
@@ -78,14 +84,49 @@ const resultTemplates = [
   },
 ];
 
-function buildQueries(niche) {
-  return [
-    niche,
-    `${niche} explained`,
-    `${niche} trends`,
-    `${niche} stories`,
-    `${niche} breakdown`,
-  ];
+async function requestExpandedQueries(niche) {
+  const response = await fetch("/api/queries", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      niche,
+    }),
+  });
+
+  const payload = await response
+    .json()
+    .catch(() => null);
+
+  if (!response.ok) {
+    const errorMessage =
+      payload &&
+      typeof payload.detail === "string"
+        ? payload.detail
+        : "Could not generate search queries right now.";
+
+    throw new Error(errorMessage);
+  }
+
+  const responseIsValid =
+    payload &&
+    typeof payload.niche === "string" &&
+    Array.isArray(payload.queries) &&
+    payload.queries.every(
+      (query) => typeof query === "string",
+    );
+
+  if (!responseIsValid) {
+    throw new Error(
+      "NicheRadar received an invalid query response.",
+    );
+  }
+
+  return {
+    niche: payload.niche,
+    queries: payload.queries,
+  };
 }
 
 function renderQueries(queries) {
@@ -279,9 +320,12 @@ function renderResults(niche) {
   }
 }
 
-function showReview(niche) {
+function showReview(
+  niche,
+  queries,
+) {
   activeNiche = niche;
-  reviewedQueries = buildQueries(niche);
+  reviewedQueries = [...queries];
 
   reviewNiche.textContent = niche;
   reviewError.textContent = "";
@@ -334,21 +378,45 @@ function showLanding({ clearInput = true } = {}) {
   nicheInput.focus();
 }
 
-nicheForm.addEventListener("submit", (event) => {
-  event.preventDefault();
+nicheForm.addEventListener(
+  "submit",
+  async (event) => {
+    event.preventDefault();
 
-  const niche = nicheInput.value.trim();
+    const niche = nicheInput.value.trim();
 
-  if (!niche) {
-    formError.textContent = "Enter a niche to begin your analysis.";
+    if (!niche) {
+      formError.textContent =
+        "Enter a niche to begin your analysis.";
 
-    nicheInput.focus();
-    return;
-  }
+      nicheInput.focus();
+      return;
+    }
 
-  formError.textContent = "";
-  showReview(niche);
-});
+    formError.textContent = "";
+    analyseButton.disabled = true;
+    analyseButtonLabel.textContent =
+      "Finding angles...";
+
+    try {
+      const expansion =
+        await requestExpandedQueries(niche);
+
+      showReview(
+        expansion.niche,
+        expansion.queries,
+      );
+    } catch (error) {
+      formError.textContent =
+        error instanceof Error
+          ? error.message
+          : "Could not generate search queries right now.";
+    } finally {
+      analyseButton.disabled = false;
+      analyseButtonLabel.textContent = "Analyse";
+    }
+  },
+);
 
 addQueryButton.addEventListener("click", addReviewedQuery);
 
