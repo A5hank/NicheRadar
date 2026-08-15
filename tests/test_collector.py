@@ -16,31 +16,60 @@ from nicheradar.youtube import YouTubeClient
 
 
 def test_collection_saves_valid_short_candidates() -> None:
-    """Collection should join, filter, and save API data."""
+    """Collection should search, deduplicate, and save API data."""
+
+    searched_queries: list[str] = []
 
     def handler(
         request: httpx.Request,
     ) -> httpx.Response:
         if request.url.path.endswith("/search"):
-            return httpx.Response(
-                200,
-                json={
-                    "items": [
-                        {
-                            "id": {
-                                "videoId": "short-video",
+            query = request.url.params["q"]
+            searched_queries.append(query)
+
+            if query == "AI productivity":
+                return httpx.Response(
+                    200,
+                    json={
+                        "items": [
+                            {
+                                "id": {
+                                    "videoId": "short-video",
+                                }
+                            },
+                            {
+                                "id": {
+                                    "videoId": "long-video",
+                                }
+                            },
+                        ]
+                    },
+                )
+
+            if query == "AI tools":
+                return httpx.Response(
+                    200,
+                    json={
+                        "items": [
+                            {
+                                "id": {
+                                    "videoId": "short-video",
+                                }
                             }
-                        },
-                        {
-                            "id": {
-                                "videoId": "long-video",
-                            }
-                        },
-                    ]
-                },
-            )
+                        ]
+                    },
+                )
+
+            raise AssertionError(f"Unexpected search query: {query}")
 
         if request.url.path.endswith("/videos"):
+            requested_video_ids = request.url.params["id"].split(",")
+
+            assert requested_video_ids == [
+                "short-video",
+                "long-video",
+            ]
+
             return httpx.Response(
                 200,
                 json={
@@ -86,7 +115,7 @@ def test_collection_saves_valid_short_candidates() -> None:
             )
 
         if request.url.path.endswith("/channels"):
-            assert request.url.params["id"] == "channel-123"
+            assert request.url.params["id"] == ("channel-123")
 
             return httpx.Response(
                 200,
@@ -125,6 +154,11 @@ def test_collection_saves_valid_short_candidates() -> None:
                     client=client,
                     session=session,
                     niche="AI productivity",
+                    search_queries=(
+                        "AI productivity",
+                        " AI tools ",
+                        "ai productivity",
+                    ),
                     collected_at=datetime(
                         2026,
                         8,
@@ -156,7 +190,17 @@ def test_collection_saves_valid_short_candidates() -> None:
             assert stored_snapshot.video_count == 1
             assert stored_snapshot.average_views == 800_000
 
-        assert summary.searched_count == 2
+        assert searched_queries == [
+            "AI productivity",
+            "AI tools",
+        ]
+        assert summary.niche == "AI productivity"
+        assert summary.search_queries == (
+            "AI productivity",
+            "AI tools",
+        )
+        assert summary.searched_count == 3
+        assert summary.unique_video_count == 2
         assert summary.fetched_count == 2
         assert summary.short_candidate_count == 1
         assert summary.saved_count == 1
