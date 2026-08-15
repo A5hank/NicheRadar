@@ -1,6 +1,10 @@
 """HTTP API and frontend server for NicheRadar."""
 
-from collections.abc import Iterator
+from collections.abc import (
+    Callable,
+    Iterator,
+)
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -15,17 +19,30 @@ from pydantic import (
     Field,
     field_validator,
 )
+from sqlalchemy.exc import SQLAlchemyError
 
+from nicheradar.analytics import PerformanceLabel
 from nicheradar.config import get_settings
+from nicheradar.database import (
+    create_database_engine,
+    create_database_schema,
+    create_session_factory,
+)
 from nicheradar.groq_client import (
     GroqAPIError,
     GroqClient,
+)
+from nicheradar.pipeline import (
+    NicheAnalysis,
+    run_niche_analysis,
 )
 from nicheradar.query_expansion import (
     DEFAULT_QUERY_COUNT,
     QueryExpansionError,
     expand_niche_queries,
+    normalize_query,
 )
+from nicheradar.youtube import YouTubeClient
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -38,7 +55,7 @@ if not FRONTEND_DIRECTORY.is_dir():
 
 
 class QueryExpansionRequest(BaseModel):
-    """Data sent by the browser when requesting query suggestions."""
+    """Data sent when requesting query suggestions."""
 
     niche: str = Field(
         min_length=1,
@@ -51,9 +68,9 @@ class QueryExpansionRequest(BaseModel):
         cls,
         value: str,
     ) -> str:
-        """Remove unnecessary whitespace and reject blank niches."""
+        """Normalize and validate the requested niche."""
 
-        cleaned_niche = " ".join(value.split())
+        cleaned_niche = normalize_query(value)
 
         if not cleaned_niche:
             raise ValueError("niche must not be empty")
@@ -68,8 +85,103 @@ class QueryExpansionResponse(BaseModel):
     queries: list[str]
 
 
+class AnalysisRequest(BaseModel):
+    """Approved search queries submitted for analysis."""
+
+    niche: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+    queries: list[str] = Field(
+        min_length=DEFAULT_QUERY_COUNT,
+        max_length=DEFAULT_QUERY_COUNT,
+    )
+
+    @field_validator("niche")
+    @classmethod
+    def normalize_niche(
+        cls,
+        value: str,
+    ) -> str:
+        """Normalize and validate the submitted niche."""
+
+        cleaned_niche = normalize_query(value)
+
+        if not cleaned_niche:
+            raise ValueError("niche must not be empty")
+
+        return cleaned_niche
+
+    @field_validator("queries")
+    @classmethod
+    def validate_queries(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        """Require five unique, non-empty search queries."""
+
+        cleaned_queries = [
+            normalize_query(value)
+            for value in values
+        ]
+
+        if any(
+            not query
+            for query in cleaned_queries
+        ):
+            raise ValueError(
+                "queries must not contain empty values"
+            )
+
+        comparison_keys = {
+            query.casefold()
+            for query in cleaned_queries
+        }
+
+        if len(comparison_keys) != len(cleaned_queries):
+            raise ValueError(
+                "queries must be unique"
+            )
+
+        return cleaned_queries
+
+
+class AnalysisVideoResponse(BaseModel):
+    """One scored video returned to the dashboard."""
+
+    rank: int
+    video_id: str
+    title: str
+    url: str
+    channel_name: str
+    upload_date: datetime
+    views: int
+    views_per_day: float
+    subscribers: int | None
+    subscriber_multiplier: float | None
+    performance: PerformanceLabel
+
+
+class AnalysisResponse(BaseModel):
+    """Complete browser-facing NicheRadar result."""
+
+    niche: str
+    queries: list[str]
+    videos_considered: int
+    videos_returned: int
+    breakout_count: int
+    exceptional_performance_count: int
+    videos: list[AnalysisVideoResponse]
+
+
+AnalysisRunner = Callable[
+    [AnalysisRequest],
+    NicheAnalysis,
+]
+
+
 def get_groq_client() -> Iterator[GroqClient]:
-    """Provide one configured Groq client for an API request."""
+    """Provide one configured Groq client per request."""
 
     settings = get_settings()
 
@@ -79,13 +191,109 @@ def get_groq_client() -> Iterator[GroqClient]:
             detail="Groq API key is not configured.",
         )
 
-    with GroqClient(settings.groq_api_key) as groq_client:
+    with GroqClient(
+        settings.groq_api_key
+    ) as groq_client:
         yield groq_client
+
+
+def execute_niche_analysis(
+    request: AnalysisRequest,
+) -> NicheAnalysis:
+    """Run the existing analysis pipeline for an API request."""
+
+    settings = get_settings()
+
+    if not settings.youtube_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="YouTube API key is not configured.",
+        )
+
+    engine = create_database_engine(
+        settings.database_url
+    )
+
+    try:
+        create_database_schema(engine)
+        session_factory = create_session_factory(engine)
+
+        with YouTubeClient(
+            settings.youtube_api_key
+        ) as youtube_client:
+            with session_factory.begin() as session:
+                return run_niche_analysis(
+                    client=youtube_client,
+                    session=session,
+                    niche=request.niche,
+                    search_queries=tuple(
+                        request.queries
+                    ),
+                )
+    finally:
+        engine.dispose()
+
+
+def get_analysis_runner() -> AnalysisRunner:
+    """Provide the analysis function used by the endpoint."""
+
+    return execute_niche_analysis
+
+
+def build_analysis_response(
+    request: AnalysisRequest,
+    analysis: NicheAnalysis,
+) -> AnalysisResponse:
+    """Convert internal analysis dataclasses into API models."""
+
+    videos = [
+        AnalysisVideoResponse(
+            rank=rank,
+            video_id=video.video_id,
+            title=video.title,
+            url=video.url,
+            channel_name=video.channel_name,
+            upload_date=video.upload_date,
+            views=video.views,
+            views_per_day=(
+                video.metrics.views_per_day
+            ),
+            subscribers=video.subscribers,
+            subscriber_multiplier=(
+                video.metrics.subscriber_multiplier
+            ),
+            performance=(
+                video.metrics.performance_label
+            ),
+        )
+        for rank, video in enumerate(
+            analysis.results.videos,
+            start=1,
+        )
+    ]
+
+    return AnalysisResponse(
+        niche=request.niche,
+        queries=request.queries,
+        videos_considered=(
+            analysis.results.considered_count
+        ),
+        videos_returned=(
+            analysis.results.total_count
+        ),
+        breakout_count=(
+            analysis.results.breakout_count
+        ),
+        exceptional_performance_count=(
+            analysis.results.exceptional_performance_count
+        ),
+        videos=videos,
+    )
 
 
 app = FastAPI(
     title="NicheRadar API",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -127,12 +335,56 @@ def generate_search_queries(
     ) as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not generate search queries right now.",
+            detail=(
+                "Could not generate search queries "
+                "right now."
+            ),
         ) from error
 
     return QueryExpansionResponse(
         niche=expansion.niche,
         queries=list(expansion.queries),
+    )
+
+
+@app.post(
+    "/api/analyses",
+    response_model=AnalysisResponse,
+    tags=["analysis"],
+)
+def analyze_niche(
+    request: AnalysisRequest,
+    analysis_runner: Annotated[
+        AnalysisRunner,
+        Depends(get_analysis_runner),
+    ],
+) -> AnalysisResponse:
+    """Run NicheRadar using five approved queries."""
+
+    try:
+        analysis = analysis_runner(request)
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            ),
+            detail=(
+                "Could not access the NicheRadar "
+                "analysis database."
+            ),
+        ) from error
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Could not complete the YouTube "
+                "analysis right now."
+            ),
+        ) from error
+
+    return build_analysis_response(
+        request,
+        analysis,
     )
 
 
