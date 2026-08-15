@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from collections.abc import Sequence
+
 from sqlalchemy.orm import Session
 
 from nicheradar.collector import (
@@ -34,6 +36,7 @@ def run_niche_analysis(
     client: YouTubeClient,
     session: Session,
     niche: str,
+    search_queries: Sequence[str] | None = None,
     analyzed_at: datetime | None = None,
     search_limit: int = DEFAULT_SEARCH_LIMIT,
     result_limit: int = DEFAULT_RESULT_LIMIT,
@@ -51,6 +54,7 @@ def run_niche_analysis(
         client=client,
         session=session,
         niche=niche,
+        search_queries=search_queries,
         collected_at=analysis_time,
         max_results=search_limit,
     )

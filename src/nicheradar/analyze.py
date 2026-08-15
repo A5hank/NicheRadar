@@ -13,6 +13,14 @@ from nicheradar.pipeline import (
     NicheAnalysis,
     run_niche_analysis,
 )
+
+from nicheradar.groq_client import GroqClient
+from nicheradar.query_expansion import (
+    DEFAULT_QUERY_COUNT,
+    expand_niche_queries,
+)
+from nicheradar.query_review import review_queries_interactively
+
 from nicheradar.ranking import ScoredVideo
 from nicheradar.results import DEFAULT_RESULT_LIMIT
 from nicheradar.youtube import YouTubeClient
@@ -197,6 +205,23 @@ def main() -> None:
     if not settings.youtube_api_key:
         parser.error("YOUTUBE_API_KEY is missing. Add it to your .env file.")
 
+    if not settings.groq_api_key:
+        raise SystemExit(
+            "GROQ_API_KEY is missing. Add it to your .env file."
+        )
+
+    with GroqClient(settings.groq_api_key) as groq_client:
+        expansion = expand_niche_queries(
+            groq_client,
+            arguments.niche,
+            query_count=DEFAULT_QUERY_COUNT,
+        )
+
+    approved_queries = review_queries_interactively(
+        niche=expansion.niche,
+        suggested_queries=expansion.queries,
+    )
+
     engine = create_database_engine(settings.database_url)
 
     try:
@@ -208,7 +233,8 @@ def main() -> None:
                 analysis = run_niche_analysis(
                     client=client,
                     session=session,
-                    niche=arguments.niche,
+                    niche=expansion.niche,
+                    search_queries=approved_queries,
                     search_limit=arguments.search_limit,
                     result_limit=arguments.result_limit,
                 )

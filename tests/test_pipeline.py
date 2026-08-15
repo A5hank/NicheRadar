@@ -28,11 +28,13 @@ ANALYSIS_TIME = datetime(
 def test_pipeline_collects_scores_and_selects_videos() -> None:
     """The pipeline should complete every analysis stage."""
 
+    searched_queries: list[str] = []
+
     def handler(
         request: httpx.Request,
     ) -> httpx.Response:
         if request.url.path.endswith("/search"):
-            assert request.url.params["q"] == "AI productivity"
+            searched_queries.append(request.url.params["q"])
 
             return httpx.Response(
                 200,
@@ -48,6 +50,8 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
             )
 
         if request.url.path.endswith("/videos"):
+            assert request.url.params["id"] == "video-123"
+
             return httpx.Response(
                 200,
                 json={
@@ -58,7 +62,9 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
                                 "title": "AI Workflow Short",
                                 "channelId": "channel-123",
                                 "channelTitle": "Practical AI",
-                                "publishedAt": ("2026-08-13T12:00:00Z"),
+                                "publishedAt": (
+                                    "2026-08-13T12:00:00Z"
+                                ),
                                 "tags": [
                                     "AI",
                                     "productivity",
@@ -97,9 +103,13 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
                 },
             )
 
-        raise AssertionError(f"Unexpected endpoint: {request.url.path}")
+        raise AssertionError(
+            f"Unexpected endpoint: {request.url.path}"
+        )
 
-    engine = create_database_engine("sqlite+pysqlite:///:memory:")
+    engine = create_database_engine(
+        "sqlite+pysqlite:///:memory:"
+    )
     transport = httpx.MockTransport(handler)
 
     try:
@@ -115,10 +125,29 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
                     client=client,
                     session=session,
                     niche="AI productivity",
+                    search_queries=(
+                        "AI productivity",
+                        "AI tools",
+                    ),
                     analyzed_at=ANALYSIS_TIME,
                 )
 
+        assert searched_queries == [
+            "AI productivity",
+            "AI tools",
+        ]
+
+        assert analysis.collection.search_queries == (
+            "AI productivity",
+            "AI tools",
+        )
+        assert analysis.collection.searched_count == 2
+        assert analysis.collection.unique_video_count == 1
+        assert analysis.collection.fetched_count == 1
+        assert analysis.collection.short_candidate_count == 1
         assert analysis.collection.saved_count == 1
+        assert analysis.collection.skipped_count == 0
+
         assert analysis.results.considered_count == 1
         assert analysis.results.total_count == 1
 
@@ -128,10 +157,17 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
         assert video.views == 250_000
         assert video.metrics.views_per_day == 250_000
         assert video.metrics.subscriber_multiplier == 50.0
-        assert video.metrics.performance_label is PerformanceLabel.BREAKOUT
+        assert (
+            video.metrics.performance_label
+            is PerformanceLabel.BREAKOUT
+        )
 
         with session_factory() as session:
-            stored_video = session.scalar(select(Video).where(Video.video_id == "video-123"))
+            stored_video = session.scalar(
+                select(Video).where(
+                    Video.video_id == "video-123"
+                )
+            )
 
             assert stored_video is not None
             assert stored_video.views == 250_000
