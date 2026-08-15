@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   --ink: #0b0b0d;
   --muted: #6f716f;
   --canvas: #f7f4ed;
@@ -9,6 +11,35 @@
   --breakout: #78c0a8;
   --breakout-soft: #deeee7;
   --white: #ffffff;
+  --floating-shadow: rgba(11, 11, 13, 0.14);
+  --field-background: #ffffff;
+  --field-text: #0b0b0d;
+  --field-placeholder: #777971;
+  --field-caret: #0b0b0d;
+  --sidebar-surface: rgba(255, 253, 248, 0.72);
+  --danger: #8d423c;
+  --danger-soft: #f2e7e1;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #f7f4ed;
+  --muted: #b8b4aa;
+  --canvas: #0b0b0d;
+  --panel: #151518;
+  --line: #353238;
+  --exceptional-soft: #202c45;
+  --breakout-soft: #1e3831;
+  --white: #1b1b1f;
+  --floating-shadow: rgba(0, 0, 0, 0.4);
+  --field-background: #0b0b0d;
+  --field-text: #f7f4ed;
+  --field-placeholder: #92938d;
+  --field-caret: #f7f4ed;
+  --sidebar-surface: rgba(21, 21, 24, 0.96);
+  --danger: #ff9b8f;
+  --danger-soft: rgba(141, 66, 60, 0.28);
 }
 
 * {
@@ -458,9 +489,10 @@ button {
   font-size: 0.8rem;
 }
 
-.remove-query-button:hover {
-  background: #f2e7e1;
-  color: #8d423c;
+.remove-query-button:hover,
+.remove-query-button:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .add-query-row {
@@ -1149,4 +1181,230 @@ button {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.theme-toggle {
+  position: fixed;
+  z-index: 1000;
+  top: 1.25rem;
+  right: 1.25rem;
+
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  place-items: center;
+
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  box-shadow: 0 0.8rem 2rem var(--floating-shadow);
+  color: var(--ink);
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--exceptional);
+  transform: translateY(-2px);
+}
+
+.theme-toggle:active {
+  transform: translateY(0);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid var(--exceptional);
+  outline-offset: 3px;
+}
+
+.theme-icon {
+  grid-area: 1 / 1;
+  width: 1.25rem;
+  height: 1.25rem;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.theme-icon-sun {
+  opacity: 0;
+  transform: rotate(-35deg) scale(0.7);
+}
+
+.theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+html[data-theme="dark"] .theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+html[data-theme="dark"] .theme-icon-moon {
+  opacity: 0;
+  transform: rotate(35deg) scale(0.7);
+}
+
+html[data-theme="dark"] .landing-view {
+  background:
+    radial-gradient(
+      circle at 50% 44%,
+      rgba(247, 244, 237, 0.08),
+      transparent 34%
+    ),
+    var(--canvas);
+}
+
+@media (max-width: 640px) {
+  .theme-toggle {
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+/*
+ * Form fields use their own foreground and background variables so the
+ * typed text, placeholder, and caret always have sufficient contrast.
+ */
+.niche-form input,
+.review-query-item input,
+.add-query-row input {
+  color: var(--field-text);
+  caret-color: var(--field-caret);
+}
+
+.niche-form input::placeholder,
+.review-query-item input::placeholder,
+.add-query-row input::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
+}
+
+/*
+ * The landing search control previously retained its hardcoded light
+ * background after the page switched to dark mode.
+ */
+html[data-theme="dark"] .niche-form,
+html[data-theme="dark"] .niche-form input {
+  background: var(--field-background);
+}
+
+html[data-theme="dark"] .niche-form {
+  overflow: hidden;
+  border-color: var(--line);
+  box-shadow: none;
+}
+html[data-theme="dark"] .niche-form:focus-within {
+  border-color: var(--exceptional);
+  box-shadow: 0 0 0 4px rgba(107, 140, 206, 0.18);
+}
+
+html[data-theme="dark"] .niche-form button {
+  background: var(--field-background);
+  border-left: 1px solid var(--line);
+  color: var(--field-text);
+}
+
+html[data-theme="dark"] .niche-form button:hover {
+  background: var(--panel);
+}
+
+/*
+ * The review card had a hardcoded cream surface. In dark mode it should
+ * use the dark panel color so its cream heading and body text are visible.
+ */
+html[data-theme="dark"] .review-card {
+  background: var(--panel);
+  border-color: var(--line);
+  box-shadow: 0 1.5rem 4rem var(--floating-shadow);
+}
+
+html[data-theme="dark"] #review-title {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .review-intro,
+html[data-theme="dark"] .review-card .eyebrow {
+  color: var(--muted);
+}
+
+/*
+ * Editable review fields use a black surface. The original niche remains
+ * visually distinct because its more specific locked-field styling wins.
+ */
+html[data-theme="dark"] .review-query-item input,
+html[data-theme="dark"] .add-query-row input {
+  background: var(--field-background);
+  border-color: var(--line);
+  color: var(--field-text);
+}
+
+/*
+ * Replace the dashboard sidebar's hardcoded translucent light background
+ * with a theme-aware surface.
+ */
+html[data-theme="dark"] .sidebar {
+  background: var(--sidebar-surface);
+  border-right-color: var(--line);
+}
+
+/*
+ * The generated query chips are direct children of #query-list. This
+ * selector improves their contrast without depending on their tag name.
+ */
+html[data-theme="dark"] #query-list > * {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .locked-query-badge {
+  background: var(--breakout-soft);
+  border-color: rgba(120, 192, 168, 0.55);
+  color: var(--breakout);
+}
+
+/*
+ * Restore the blue-green identity of the locked original niche after
+ * the general dark input styling has been applied.
+ */
+html[data-theme="dark"] .review-query-item .locked-query-input {
+  background: linear-gradient(
+    90deg,
+    var(--breakout-soft),
+    var(--exceptional-soft)
+  );
+  border-color: rgba(107, 140, 206, 0.5);
+  color: var(--ink);
+}
+
+/*
+ * The light-theme number colors are too dark against dark-mode circles.
+ */
+html[data-theme="dark"] .query-number {
+  color: var(--exceptional);
+}
+
+html[data-theme="dark"]
+  .review-query-item:nth-child(even)
+  .query-number {
+  color: var(--breakout);
 }

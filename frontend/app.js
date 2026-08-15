@@ -13,6 +13,14 @@ const reviewView = document.querySelector("#review-view");
 const dashboardView = document.querySelector("#dashboard-view");
 
 /*
+ * Global theme control
+ *
+ * The button exists outside the three application views, so the same
+ * control remains available on the landing, review, and dashboard pages.
+ */
+const themeToggle = document.querySelector("#theme-toggle");
+
+/*
  * Landing-page elements
  */
 const nicheForm = document.querySelector("#niche-form");
@@ -69,7 +77,15 @@ const mobileNewAnalysis = document.querySelector(
 );
 
 /*
- * Every analysis must contain exactly five unique queries.
+ * Theme names are kept as constants so the exact strings are defined
+ * in one place instead of being repeated throughout the application.
+ */
+const THEME_STORAGE_KEY = "nicheradar-theme";
+const LIGHT_THEME = "light";
+const DARK_THEME = "dark";
+
+/*
+ * Every analysis can contain upto five unique queries.
  *
  * The backend also validates this rule, but validating in JavaScript means
  * the user receives an immediate message without making an unnecessary
@@ -85,6 +101,65 @@ let activeNiche = "";
 let reviewedQueries = [];
 let isGeneratingQueries = false;
 let isRunningAnalysis = false;
+
+/*
+ * Apply one of NicheRadar's supported themes.
+ *
+ * The early script in index.html already chooses the initial theme before
+ * CSS loads. This function keeps the button's accessibility information
+ * synchronized and optionally remembers later user changes.
+ */
+function applyTheme(theme, { persist = false } = {}) {
+  const appliedTheme =
+    theme === DARK_THEME ? DARK_THEME : LIGHT_THEME;
+
+  const darkModeIsActive = appliedTheme === DARK_THEME;
+  const nextThemeName = darkModeIsActive
+    ? LIGHT_THEME
+    : DARK_THEME;
+
+  document.documentElement.dataset.theme = appliedTheme;
+
+  themeToggle.setAttribute(
+    "aria-pressed",
+    String(darkModeIsActive),
+  );
+
+  themeToggle.setAttribute(
+    "aria-label",
+    `Switch to ${nextThemeName} mode`,
+  );
+
+  themeToggle.title = `Switch to ${nextThemeName} mode`;
+
+  if (persist) {
+    try {
+      window.localStorage.setItem(
+        THEME_STORAGE_KEY,
+        appliedTheme,
+      );
+    } catch {
+      /*
+       * A browser may block localStorage in a restricted privacy mode.
+       * The visible theme can still change for the current page session.
+       */
+    }
+  }
+}
+
+/*
+ * Synchronize the button with the theme chosen by the early HTML script.
+ */
+function initializeTheme() {
+  const initialTheme =
+    document.documentElement.dataset.theme === DARK_THEME
+      ? DARK_THEME
+      : LIGHT_THEME;
+
+  applyTheme(initialTheme);
+}
+
+initializeTheme();
 
 /*
  * Intl.NumberFormat converts large values into compact readable text.
@@ -845,6 +920,25 @@ queryReviewForm.addEventListener(
     }
   },
 );
+
+/*
+ * Switch to the opposite theme and remember the user's selection.
+ */
+themeToggle.addEventListener("click", () => {
+  const currentTheme =
+    document.documentElement.dataset.theme === DARK_THEME
+      ? DARK_THEME
+      : LIGHT_THEME;
+
+  const nextTheme =
+    currentTheme === DARK_THEME
+      ? LIGHT_THEME
+      : DARK_THEME;
+
+  applyTheme(nextTheme, {
+    persist: true,
+  });
+});
 
 /*
  * Navigation controls.
