@@ -75,7 +75,8 @@ const mobileNewAnalysis = document.querySelector(
  * the user receives an immediate message without making an unnecessary
  * network request.
  */
-const REQUIRED_QUERY_COUNT = 5;
+const MIN_QUERY_COUNT = 1;
+const MAX_QUERY_COUNT = 5;
 
 /*
  * These variables hold the browser's current state.
@@ -310,12 +311,30 @@ function queriesAreUnique(queries) {
  * Otherwise, return the message that should be shown to the user.
  */
 function reviewValidationMessage() {
-  if (reviewedQueries.length !== REQUIRED_QUERY_COUNT) {
-    return `Choose exactly ${REQUIRED_QUERY_COUNT} queries before continuing.`;
+  const count = reviewedQueries.length;
+
+  if (count < MIN_QUERY_COUNT) {
+    return "Keep the original niche before continuing.";
+  }
+
+  if (count > MAX_QUERY_COUNT) {
+    return `Use no more than ${MAX_QUERY_COUNT} queries.`;
   }
 
   if (reviewedQueries.some((query) => !query.trim())) {
     return "Every query needs some text.";
+  }
+
+  const originalQuery = reviewedQueries[0]
+    .trim()
+    .toLowerCase();
+
+  const normalizedNiche = activeNiche
+    .trim()
+    .toLowerCase();
+
+  if (originalQuery !== normalizedNiche) {
+    return "The original niche must remain as query one.";
   }
 
   if (!queriesAreUnique(reviewedQueries)) {
@@ -334,15 +353,16 @@ function reviewValidationMessage() {
 function updateReviewControls() {
   const count = reviewedQueries.length;
   const validationMessage = reviewValidationMessage();
+  const queryLabel = count === 1 ? "query" : "queries";
 
   queryCount.textContent =
-    `${count} of ${REQUIRED_QUERY_COUNT} queries ready`;
+    `${count} ${queryLabel} ready · maximum ${MAX_QUERY_COUNT}`;
 
   addQueryButton.disabled =
-    isRunningAnalysis || count >= REQUIRED_QUERY_COUNT;
+    isRunningAnalysis || count >= MAX_QUERY_COUNT;
 
   newQueryInput.disabled =
-    isRunningAnalysis || count >= REQUIRED_QUERY_COUNT;
+    isRunningAnalysis || count >= MAX_QUERY_COUNT;
 
   runAnalysisButton.disabled =
     isRunningAnalysis || Boolean(validationMessage);
@@ -384,37 +404,64 @@ function renderQueryReview() {
     const input = document.createElement("input");
     input.type = "text";
     input.value = query;
-    input.setAttribute(
-      "aria-label",
-      `Search query ${index + 1}`,
-    );
 
-    input.addEventListener("input", () => {
-      reviewedQueries[index] = input.value;
-      reviewError.textContent = reviewValidationMessage();
-      updateReviewControls();
-    });
+    const isOriginalQuery = index === 0;
 
-    const removeButton = document.createElement("button");
-    removeButton.className = "remove-query-button";
-    removeButton.type = "button";
-    removeButton.textContent = "Remove";
-    removeButton.setAttribute(
-      "aria-label",
-      `Remove query ${index + 1}`,
-    );
+    if (isOriginalQuery) {
+      input.readOnly = true;
+      input.classList.add("locked-query-input");
+      input.setAttribute(
+        "aria-label",
+        "Original niche query, locked",
+      );
 
-    removeButton.addEventListener("click", () => {
-      reviewedQueries.splice(index, 1);
-      renderQueryReview();
-      reviewError.textContent = reviewValidationMessage();
+      const lockedBadge = document.createElement("span");
+      lockedBadge.className = "locked-query-badge";
+      lockedBadge.textContent = "Required";
 
-      if (!newQueryInput.disabled) {
-        newQueryInput.focus();
-      }
-    });
+      item.append(number, input, lockedBadge);
+    } else {
+      input.setAttribute(
+        "aria-label",
+        `Search query ${index + 1}`,
+      );
 
-    item.append(number, input, removeButton);
+      input.addEventListener("input", () => {
+        reviewedQueries[index] = input.value;
+        reviewError.textContent =
+          reviewValidationMessage();
+        updateReviewControls();
+      });
+
+      const removeButton =
+        document.createElement("button");
+
+      removeButton.className =
+        "remove-query-button";
+
+      removeButton.type = "button";
+      removeButton.textContent = "Remove";
+
+      removeButton.setAttribute(
+        "aria-label",
+        `Remove query ${index + 1}`,
+      );
+
+      removeButton.addEventListener("click", () => {
+        reviewedQueries.splice(index, 1);
+        renderQueryReview();
+
+        reviewError.textContent =
+          reviewValidationMessage();
+
+        if (!newQueryInput.disabled) {
+          newQueryInput.focus();
+        }
+      });
+
+      item.append(number, input, removeButton);
+    }
+
     reviewQueryList.append(item);
   });
 
@@ -427,9 +474,9 @@ function renderQueryReview() {
 function addReviewedQuery() {
   const query = newQueryInput.value.trim();
 
-  if (reviewedQueries.length >= REQUIRED_QUERY_COUNT) {
+  if (reviewedQueries.length >= MAX_QUERY_COUNT) {
     reviewError.textContent =
-      `You already have ${REQUIRED_QUERY_COUNT} queries.`;
+      `You already have the maximum of ${MAX_QUERY_COUNT} queries.`;
     return;
   }
 

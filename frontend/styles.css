@@ -418,6 +418,36 @@ button {
   box-shadow: 0 0 0 3px rgba(107, 140, 206, 0.12);
 }
 
+.review-query-item input.locked-query-input {
+  background: linear-gradient(
+    100deg,
+    var(--breakout-soft),
+    var(--exceptional-soft)
+  );
+  border-color: rgba(107, 140, 206, 0.28);
+  color: var(--ink);
+  cursor: not-allowed;
+  font-weight: 700;
+}
+
+.review-query-item input.locked-query-input:focus {
+  border-color: rgba(107, 140, 206, 0.28);
+  box-shadow: none;
+}
+
+.locked-query-badge {
+  display: inline-flex;
+  padding: 0.55rem 0.7rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--breakout-soft);
+  border: 1px solid rgba(120, 192, 168, 0.5);
+  border-radius: 0.7rem;
+  color: #315f50;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
 .remove-query-button {
   padding: 0.75rem;
   background: transparent;

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from nicheradar.analytics import PerformanceLabel
 from nicheradar.api import (
+    AnalysisRequest,
     app,
     get_analysis_runner,
     get_groq_client,
@@ -98,6 +99,51 @@ def test_frontend_assets_are_served(
 
     assert css_response.status_code == 200
     assert javascript_response.status_code == 200
+
+def test_analysis_request_accepts_original_niche_only() -> None:
+    """A single locked niche query should be valid."""
+
+    request = AnalysisRequest(
+        niche="  Marvel  ",
+        queries=[
+            " Marvel ",
+        ],
+    )
+
+    assert request.niche == "Marvel"
+    assert request.queries == ["Marvel"]
+
+
+def test_analysis_request_rejects_missing_original_niche() -> None:
+    """The first query must match the submitted niche."""
+
+    with pytest.raises(
+        ValueError,
+        match="begin with the original niche",
+    ):
+        AnalysisRequest(
+            niche="Marvel",
+            queries=[
+                "MCU theories",
+            ],
+        )
+
+
+def test_analysis_request_rejects_more_than_five_queries() -> None:
+    """The API must reject a sixth query."""
+
+    with pytest.raises(ValueError):
+        AnalysisRequest(
+            niche="Marvel",
+            queries=[
+                "Marvel",
+                "Marvel news",
+                "MCU theories",
+                "Marvel facts",
+                "Marvel trailers",
+                "Marvel interviews",
+            ],
+        )
 
 
 def test_query_endpoint_returns_expanded_queries(

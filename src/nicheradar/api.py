@@ -18,6 +18,7 @@ from pydantic import (
     BaseModel,
     Field,
     field_validator,
+    model_validator,
 )
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -38,6 +39,7 @@ from nicheradar.pipeline import (
 )
 from nicheradar.query_expansion import (
     DEFAULT_QUERY_COUNT,
+    MAX_QUERY_COUNT,
     QueryExpansionError,
     expand_niche_queries,
     normalize_query,
@@ -86,15 +88,15 @@ class QueryExpansionResponse(BaseModel):
 
 
 class AnalysisRequest(BaseModel):
-    """Approved search queries submitted for analysis."""
+    """One to five approved search queries submitted for analysis."""
 
     niche: str = Field(
         min_length=1,
         max_length=100,
     )
     queries: list[str] = Field(
-        min_length=DEFAULT_QUERY_COUNT,
-        max_length=DEFAULT_QUERY_COUNT,
+        min_length=1,
+        max_length=MAX_QUERY_COUNT,
     )
 
     @field_validator("niche")
@@ -118,7 +120,7 @@ class AnalysisRequest(BaseModel):
         cls,
         values: list[str],
     ) -> list[str]:
-        """Require five unique, non-empty search queries."""
+        """Require unique, non-empty search queries."""
 
         cleaned_queries = [
             normalize_query(value)
@@ -144,6 +146,22 @@ class AnalysisRequest(BaseModel):
             )
 
         return cleaned_queries
+
+    @model_validator(mode="after")
+    def require_original_niche_first(
+        self,
+    ) -> "AnalysisRequest":
+        """Require the locked original niche as query one."""
+
+        if (
+            self.queries[0].casefold()
+            != self.niche.casefold()
+        ):
+            raise ValueError(
+                "queries must begin with the original niche"
+            )
+
+        return self
 
 
 class AnalysisVideoResponse(BaseModel):
