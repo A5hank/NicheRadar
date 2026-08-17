@@ -171,6 +171,7 @@ class AnalysisVideoResponse(BaseModel):
     video_id: str
     title: str
     url: str
+    thumbnail_url: str | None = None
     channel_name: str
     upload_date: datetime
     views: int
@@ -270,6 +271,7 @@ def build_analysis_response(
             video_id=video.video_id,
             title=video.title,
             url=video.url,
+            thumbnail_url=video.thumbnail_url,
             channel_name=video.channel_name,
             upload_date=video.upload_date,
             views=video.views,

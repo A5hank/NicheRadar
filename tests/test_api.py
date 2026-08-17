@@ -234,6 +234,9 @@ def test_analysis_endpoint_returns_dashboard_data(
         video_id="video-123",
         title="Marvel Theory Explained",
         url="https://www.youtube.com/watch?v=video-123",
+        thumbnail_url=(
+            "https://images.example/video-123-medium.jpg"
+        ),
         channel_name="Marvel Analyst",
         upload_date=datetime(
             2026,
@@ -291,6 +294,9 @@ def test_analysis_endpoint_returns_dashboard_data(
 
     assert payload["videos"][0]["video_id"] == (
         "video-123"
+    )
+    assert payload["videos"][0]["thumbnail_url"] == (
+        "https://images.example/video-123-medium.jpg"
     )
     assert payload["videos"][0]["views"] == 250_000
     assert payload["videos"][0]["views_per_day"] == (

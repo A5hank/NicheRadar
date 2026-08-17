@@ -144,6 +144,11 @@ class Video(Base):
         String(500),
     )
 
+    thumbnail_url: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+
     channel_id: Mapped[str] = mapped_column(
         ForeignKey(
             "channels.channel_id",

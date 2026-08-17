@@ -634,7 +634,31 @@ function createResultRow(videoData) {
   const thumbnail = document.createElement("span");
   thumbnail.className = "thumbnail";
   thumbnail.setAttribute("aria-hidden", "true");
-  thumbnail.append(document.createElement("i"));
+
+  const hasThumbnail =
+    typeof videoData.thumbnail_url === "string" &&
+    videoData.thumbnail_url.trim() !== "";
+
+  if (hasThumbnail) {
+    const thumbnailImage = document.createElement("img");
+
+    thumbnailImage.src = videoData.thumbnail_url;
+    thumbnailImage.alt = "";
+    thumbnailImage.loading = "lazy";
+    thumbnailImage.decoding = "async";
+
+    thumbnailImage.addEventListener("error", () => {
+      thumbnail.classList.add("thumbnail-fallback");
+      thumbnail.replaceChildren(
+        document.createElement("i"),
+      );
+    });
+
+    thumbnail.append(thumbnailImage);
+  } else {
+    thumbnail.classList.add("thumbnail-fallback");
+    thumbnail.append(document.createElement("i"));
+  }
 
   const videoText = document.createElement("div");
   const heading = document.createElement("h3");
@@ -646,20 +670,21 @@ function createResultRow(videoData) {
   videoText.append(heading, channel);
   video.append(thumbnail, videoText);
 
-  const link = document.createElement("a");
-  link.href = videoData.url;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-  link.textContent = "Open ↗";
-  link.setAttribute(
-    "aria-label",
-    `Open ${videoData.title} on YouTube`,
-  );
-
   const subscriberText =
     videoData.subscribers === null
       ? "Hidden"
       : formatCompactNumber(videoData.subscribers);
+
+  const cardLink = document.createElement("a");
+
+  cardLink.className = "result-row-link";
+  cardLink.href = videoData.url;
+  cardLink.target = "_blank";
+  cardLink.rel = "noopener noreferrer";
+  cardLink.setAttribute(
+    "aria-label",
+    `Open ${videoData.title} on YouTube`,
+  );
 
   row.append(
     rank,
@@ -681,7 +706,7 @@ function createResultRow(videoData) {
       formatMultiplier(videoData.subscriber_multiplier),
       true,
     ),
-    link,
+    cardLink,
   );
 
   return row;

@@ -157,6 +157,7 @@ def collect_niche(
             video_id=video.video_id,
             title=video.title,
             url=video.url,
+            thumbnail_url=video.thumbnail_url,
             channel_id=video.channel_id,
             views=video.view_count,
             likes=video.like_count,
