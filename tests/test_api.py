@@ -374,6 +374,7 @@ def test_analysis_endpoint_returns_dashboard_data(
 
     video = SimpleNamespace(
         video_id="video-123",
+        channel_id="channel-123",
         title="Marvel Theory Explained",
         url="https://www.youtube.com/watch?v=video-123",
         thumbnail_url=(
@@ -462,6 +463,24 @@ def test_analysis_endpoint_returns_dashboard_data(
         "Avengers analysis",
         "Marvel character stories",
     ]
+
+    assert payload["virality_score"] == {
+        "score": 30,
+        "label": "emerging",
+        "breakdown": {
+            "breakout_points": 0,
+            "velocity_points": 30,
+            "exceptional_points": 0,
+            "diversity_points": 0,
+            "median_views_per_day": 125_000.0,
+            "unique_channel_count": 1,
+        },
+    }
+
+    assert payload["confidence_score"] == {
+        "score": 70,
+        "label": "good",
+    }
 
 
 def test_analysis_endpoint_rejects_duplicate_queries(

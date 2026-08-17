@@ -10,6 +10,18 @@
   --exceptional-soft: #dfe8f8;
   --breakout: #78c0a8;
   --breakout-soft: #deeee7;
+    /*
+   * Virality and Confidence Score colours.
+   *
+   * Virality reuses the existing breakout green.
+   * Confidence uses a warm gold that remains readable in both themes.
+   */
+  --confidence: #d6b56d;
+  --confidence-soft: #f3e8c7;
+  --confidence-text: #76570f;
+  --score-track: #d8ddd9;
+  --tooltip-surface: #242428;
+  --tooltip-text: #fffdf8;
   --inverse-text: #ffffff;
   --thumbnail-detail: #ffffff;
   --floating-shadow: rgba(11, 11, 13, 0.14);
@@ -81,6 +93,11 @@ html[data-theme="dark"] {
   --locked-gradient-angle: 90deg;
   --locked-exceptional-border: rgba(107, 140, 206, 0.5);
   --locked-breakout-border: rgba(120, 192, 168, 0.55);
+  --confidence-soft: #3b321e;
+  --confidence-text: #d6b56d;
+  --score-track: #2b2c2f;
+  --tooltip-surface: #242428;
+  --tooltip-text: #f7f4ed;
 }
 
 * {
@@ -770,6 +787,365 @@ button {
   border-radius: 999px;
   color: var(--query-chip-text);
   font-size: 0.76rem;
+}
+
+/*
+ * Virality and Confidence Score panel
+ */
+
+.score-panel {
+  margin-top: 2.2rem;
+  padding: 1.6rem 1.7rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+}
+
+.score-panel-heading {
+  margin-bottom: 1.15rem;
+}
+
+/*
+ * Place the two overall scores next to each other.
+ *
+ * The narrow middle column belongs to the divider.
+ */
+.score-overview {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    1px
+    minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1.6rem;
+}
+
+.score-column {
+  min-width: 0;
+}
+
+.score-divider {
+  width: 1px;
+  background: var(--line);
+}
+
+/*
+ * Keep the score name and its information button together.
+ */
+.score-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-name-row h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+/*
+ * Information tooltip
+ *
+ * .score-info is the positioning container.
+ * The tooltip is positioned relative to this small container instead
+ * of relative to the entire page.
+ */
+.score-info {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/*
+ * The visible circular "i" button.
+ */
+.score-info-button {
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--breakout);
+  border-radius: 50%;
+  color: var(--breakout-text);
+  cursor: help;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.confidence-info-button {
+  border-color: var(--confidence);
+  color: var(--confidence-text);
+}
+
+.score-info-button:hover {
+  background: var(--breakout-soft);
+}
+
+.confidence-info-button:hover {
+  background: var(--confidence-soft);
+}
+
+.score-info-button:focus-visible {
+  outline: 2px solid var(--exceptional);
+  outline-offset: 2px;
+}
+
+/*
+ * The tooltip starts invisible.
+ *
+ * pointer-events: none means the hidden tooltip cannot block clicks
+ * or interfere with nearby dashboard controls.
+ */
+.score-tooltip {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 0.7rem);
+  left: 50%;
+  width: 260px;
+  padding: 0.75rem 0.85rem;
+  background: var(--tooltip-surface);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.8rem 2rem var(--floating-shadow);
+  color: var(--tooltip-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 0.35rem);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    visibility 150ms ease;
+  visibility: hidden;
+}
+
+/*
+ * The Confidence tooltip is aligned to the right on larger screens.
+ * This reduces the chance of it extending outside the panel.
+ */
+.score-info-right .score-tooltip {
+  right: 0;
+  left: auto;
+  transform: translateY(0.35rem);
+}
+
+/*
+ * Show the tooltip when:
+ * - the mouse is over the information button;
+ * - the button receives keyboard or touch focus.
+ */
+.score-info-button:hover + .score-tooltip,
+.score-info-button:focus + .score-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
+}
+
+.score-info-right .score-info-button:hover + .score-tooltip,
+.score-info-right .score-info-button:focus + .score-tooltip {
+  transform: translateY(0);
+}
+
+/*
+ * Large score number and "/ 100" suffix.
+ */
+.score-number {
+  display: flex;
+  margin-top: 0.55rem;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.score-number strong {
+  color: var(--breakout);
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 780;
+  letter-spacing: -0.065em;
+  line-height: 1;
+}
+
+.score-number span {
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.confidence-score-number strong {
+  color: var(--confidence);
+}
+
+/*
+ * Human-readable labels such as "Strong" and "High confidence".
+ */
+.score-status {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.virality-score-status {
+  color: var(--breakout-text);
+}
+
+.confidence-score-status {
+  color: var(--confidence-text);
+}
+
+/*
+ * Progress bars
+ *
+ * The outer element is the neutral track.
+ * JavaScript changes the width of the inner span.
+ */
+.score-progress {
+  height: 0.48rem;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  background: var(--score-track);
+  border-radius: 999px;
+}
+
+.score-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--breakout);
+  border-radius: inherit;
+  transition: width 500ms ease;
+}
+
+.confidence-score-progress > span {
+  background: var(--confidence);
+}
+
+/*
+ * Short interpretation underneath both overall scores.
+ */
+.virality-score-summary {
+  margin: 1.35rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+/*
+ * Collapsible score breakdown
+ */
+
+.score-breakdown {
+  margin-top: 0.9rem;
+}
+
+.score-breakdown summary {
+  display: flex;
+  width: max-content;
+  margin: 0 auto;
+  padding: 0.5rem 0.7rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 0.55rem;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  list-style: none;
+}
+
+.score-breakdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.score-breakdown summary:hover {
+  background: var(--breakout-soft);
+}
+
+.score-breakdown summary:focus-visible {
+  outline: 2px solid var(--exceptional);
+  outline-offset: 2px;
+}
+
+/*
+ * Only one of these labels appears at a time.
+ */
+.hide-breakdown-label {
+  display: none;
+}
+
+.score-breakdown[open] .show-breakdown-label {
+  display: none;
+}
+
+.score-breakdown[open] .hide-breakdown-label {
+  display: inline;
+}
+
+/*
+ * Rotate the small arrow when the dropdown opens.
+ */
+.breakdown-chevron {
+  display: inline-block;
+  color: var(--breakout-text);
+  font-size: 1rem;
+  transition: transform 180ms ease;
+}
+
+.score-breakdown[open] .breakdown-chevron {
+  transform: rotate(180deg);
+}
+
+/*
+ * Four Virality Score components.
+ *
+ * CSS Grid keeps all four equally sized on larger screens.
+ */
+.score-breakdown-grid {
+  display: grid;
+  margin-top: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.breakdown-item {
+  min-width: 0;
+  padding: 0.95rem;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+}
+
+.breakdown-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.breakdown-heading h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.breakdown-heading strong {
+  flex: 0 0 auto;
+  color: var(--breakout-text);
+  font-size: 0.82rem;
+}
+
+.breakdown-item p {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .stats-grid {

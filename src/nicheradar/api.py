@@ -55,6 +55,13 @@ from nicheradar.query_relevance import (
 
 from nicheradar.youtube import YouTubeClient
 
+from nicheradar.virality import (
+    ConfidenceLabel,
+    ViralityLabel,
+    calculate_confidence_score,
+    calculate_virality_score,
+)
+
 LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -261,6 +268,30 @@ class AnalysisVideoResponse(BaseModel):
     subscriber_multiplier: float | None
     performance: PerformanceLabel
 
+class ViralityBreakdownResponse(BaseModel):
+    """Component values used by the expandable score breakdown."""
+
+    breakout_points: int
+    velocity_points: int
+    exceptional_points: int
+    diversity_points: int
+    median_views_per_day: float
+    unique_channel_count: int
+
+
+class ViralityScoreResponse(BaseModel):
+    """Browser-facing Virality Score information."""
+
+    score: int
+    label: ViralityLabel
+    breakdown: ViralityBreakdownResponse
+
+
+class ConfidenceScoreResponse(BaseModel):
+    """Browser-facing Confidence Score information."""
+
+    score: int
+    label: ConfidenceLabel
 
 class AnalysisResponse(BaseModel):
     """Complete browser-facing NicheRadar result."""
@@ -271,6 +302,8 @@ class AnalysisResponse(BaseModel):
     videos_returned: int
     breakout_count: int
     exceptional_performance_count: int
+    virality_score: ViralityScoreResponse
+    confidence_score: ConfidenceScoreResponse
     videos: list[AnalysisVideoResponse]
 
 
@@ -346,6 +379,8 @@ def build_analysis_response(
 ) -> AnalysisResponse:
     """Convert internal analysis dataclasses into API models."""
 
+    result_videos = analysis.results.videos
+
     videos = [
         AnalysisVideoResponse(
             rank=rank,
@@ -368,10 +403,52 @@ def build_analysis_response(
             ),
         )
         for rank, video in enumerate(
-            analysis.results.videos,
+            result_videos,
             start=1,
         )
     ]
+
+    unique_channel_count = len(
+        {
+            video.channel_id
+            for video in result_videos
+        }
+    )
+
+    videos_with_subscriber_data = sum(
+        video.subscribers is not None
+        for video in result_videos
+    )
+
+    virality = calculate_virality_score(
+        views_per_day=(
+            video.metrics.views_per_day
+            for video in result_videos
+        ),
+        breakout_count=(
+            analysis.results.breakout_count
+        ),
+        exceptional_count=(
+            analysis.results
+            .exceptional_performance_count
+        ),
+        unique_channel_count=(
+            unique_channel_count
+        ),
+    )
+
+    confidence = calculate_confidence_score(
+        query_count=len(request.queries),
+        videos_considered=(
+            analysis.results.considered_count
+        ),
+        videos_returned=(
+            analysis.results.total_count
+        ),
+        videos_with_subscriber_data=(
+            videos_with_subscriber_data
+        ),
+    )
 
     return AnalysisResponse(
         niche=request.niche,
@@ -386,7 +463,36 @@ def build_analysis_response(
             analysis.results.breakout_count
         ),
         exceptional_performance_count=(
-            analysis.results.exceptional_performance_count
+            analysis.results
+            .exceptional_performance_count
+        ),
+        virality_score=ViralityScoreResponse(
+            score=virality.score,
+            label=virality.label,
+            breakdown=ViralityBreakdownResponse(
+                breakout_points=(
+                    virality.breakout_points
+                ),
+                velocity_points=(
+                    virality.velocity_points
+                ),
+                exceptional_points=(
+                    virality.exceptional_points
+                ),
+                diversity_points=(
+                    virality.diversity_points
+                ),
+                median_views_per_day=(
+                    virality.median_views_per_day
+                ),
+                unique_channel_count=(
+                    virality.unique_channel_count
+                ),
+            ),
+        ),
+        confidence_score=ConfidenceScoreResponse(
+            score=confidence.score,
+            label=confidence.label,
         ),
         videos=videos,
     )

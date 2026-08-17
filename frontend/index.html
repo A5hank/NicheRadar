@@ -277,6 +277,201 @@
             <div id="query-list" class="query-list"></div>
           </section>
 
+          <section
+            class="score-panel"
+            aria-labelledby="score-panel-heading"
+          >
+            <h2
+              id="score-panel-heading"
+              class="eyebrow score-panel-heading"
+            >
+              Niche virality
+            </h2>
+
+            <div class="score-overview">
+              <article class="score-column virality-score-column">
+                <div class="score-name-row">
+                  <h3>Virality Score</h3>
+
+                  <span class="score-info">
+                    <button
+                      class="score-info-button"
+                      type="button"
+                      aria-label="What is the Virality Score?"
+                      aria-describedby="virality-score-tooltip"
+                    >
+                      i
+                    </button>
+
+                    <span
+                      id="virality-score-tooltip"
+                      class="score-tooltip"
+                      role="tooltip"
+                    >
+                      Measures current niche momentum using breakout activity,
+                      viewing velocity, exceptional performances and creator
+                      diversity.
+                    </span>
+                  </span>
+                </div>
+
+                <div class="score-number">
+                  <strong id="virality-score-value">—</strong>
+                  <span>/ 100</span>
+                </div>
+
+                <p
+                  id="virality-score-label"
+                  class="score-status virality-score-status"
+                >
+                  Waiting for results
+                </p>
+
+                <div
+                  id="virality-score-progress"
+                  class="score-progress"
+                  role="progressbar"
+                  aria-label="Virality Score"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span id="virality-score-progress-fill"></span>
+                </div>
+              </article>
+
+              <div class="score-divider" aria-hidden="true"></div>
+
+              <article class="score-column confidence-score-column">
+                <div class="score-name-row">
+                  <h3>Confidence Score</h3>
+
+                  <span class="score-info score-info-right">
+                    <button
+                      class="score-info-button confidence-info-button"
+                      type="button"
+                      aria-label="What is the Confidence Score?"
+                      aria-describedby="confidence-score-tooltip"
+                    >
+                      i
+                    </button>
+
+                    <span
+                      id="confidence-score-tooltip"
+                      class="score-tooltip"
+                      role="tooltip"
+                    >
+                      Shows how reliable the virality score is based on the
+                      amount and completeness of the data analysed.
+                    </span>
+                  </span>
+                </div>
+
+                <div class="score-number confidence-score-number">
+                  <strong id="confidence-score-value">—</strong>
+                  <span>/ 100</span>
+                </div>
+
+                <p
+                  id="confidence-score-label"
+                  class="score-status confidence-score-status"
+                >
+                  Waiting for results
+                </p>
+
+                <div
+                  id="confidence-score-progress"
+                  class="score-progress confidence-score-progress"
+                  role="progressbar"
+                  aria-label="Confidence Score"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <span id="confidence-score-progress-fill"></span>
+                </div>
+              </article>
+            </div>
+
+            <p id="virality-score-summary" class="virality-score-summary">
+              NicheRadar will summarise the current niche momentum here.
+            </p>
+
+            <details id="score-breakdown" class="score-breakdown">
+              <summary>
+                <span class="show-breakdown-label">
+                  View score breakdown
+                </span>
+
+                <span class="hide-breakdown-label">
+                  Hide score breakdown
+                </span>
+
+                <span class="breakdown-chevron" aria-hidden="true">
+                  &#8964;
+                </span>
+              </summary>
+
+              <div class="score-breakdown-grid">
+                <article class="breakdown-item">
+                  <div class="breakdown-heading">
+                    <h3>Breakout opportunity</h3>
+
+                    <strong>
+                      <span id="breakout-score-points">0</span>/40
+                    </strong>
+                  </div>
+
+                  <p id="breakout-score-detail">
+                    No breakout information available.
+                  </p>
+                </article>
+
+                <article class="breakdown-item">
+                  <div class="breakdown-heading">
+                    <h3>View velocity</h3>
+
+                    <strong>
+                      <span id="velocity-score-points">0</span>/30
+                    </strong>
+                  </div>
+
+                  <p id="velocity-score-detail">
+                    No viewing-velocity information available.
+                  </p>
+                </article>
+
+                <article class="breakdown-item">
+                  <div class="breakdown-heading">
+                    <h3>Exceptional performance</h3>
+
+                    <strong>
+                      <span id="exceptional-score-points">0</span>/15
+                    </strong>
+                  </div>
+
+                  <p id="exceptional-score-detail">
+                    No exceptional-performance information available.
+                  </p>
+                </article>
+
+                <article class="breakdown-item">
+                  <div class="breakdown-heading">
+                    <h3>Creator diversity</h3>
+
+                    <strong>
+                      <span id="diversity-score-points">0</span>/15
+                    </strong>
+                  </div>
+
+                  <p id="diversity-score-detail">
+                    No creator-diversity information available.
+                  </p>
+                </article>
+              </div>
+            </details>
+          </section>
+
           <section class="stats-grid" aria-label="Analysis highlights">
             <article class="stat-card videos-stat">
               <span class="stat-icon mixed-icon" aria-hidden="true">&#9673;</span>

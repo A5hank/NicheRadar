@@ -91,3 +91,110 @@ def test_generate_json_raises_safe_api_error() -> None:
                 system_prompt="Return JSON.",
                 user_prompt="Expand Marvel.",
             )
+
+def test_generate_json_retries_schema_generation_failure() -> None:
+    """A Groq schema-generation failure should use JSON Object Mode once."""
+
+    request_count = 0
+
+    response_schema: dict[str, object] = {
+        "type": "object",
+        "properties": {
+            "queries": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                },
+            },
+        },
+        "required": [
+            "queries",
+        ],
+        "additionalProperties": False,
+    }
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        nonlocal request_count
+
+        request_count += 1
+
+        request_payload = json.loads(
+            request.content,
+        )
+
+        if request_count == 1:
+            assert request_payload["response_format"] == {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "nicheradar_response",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
+
+            return httpx.Response(
+                400,
+                json={
+                    "error": {
+                        "message": (
+                            "Failed to generate JSON. "
+                            "Please adjust your prompt."
+                        ),
+                        "type": "invalid_request_error",
+                        "failed_generation": {
+                            "attempted_output": (
+                                "invalid structured output"
+                            ),
+                        },
+                    }
+                },
+            )
+
+        assert request_count == 2
+
+        assert request_payload["response_format"] == {
+            "type": "json_object",
+        }
+
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "queries": [
+                                        "Minecraft survival tips",
+                                        "Minecraft building ideas",
+                                    ]
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with GroqClient(
+        "test-groq-key",
+        transport=transport,
+    ) as client:
+        result = client.generate_json(
+            system_prompt="Return JSON.",
+            user_prompt="Expand Minecraft.",
+            response_schema=response_schema,
+        )
+
+    assert request_count == 2
+
+    assert result == {
+        "queries": [
+            "Minecraft survival tips",
+            "Minecraft building ideas",
+        ]
+    }
