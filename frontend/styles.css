@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   --ink: #0b0b0d;
   --muted: #6f716f;
   --canvas: #f7f4ed;
@@ -8,7 +10,94 @@
   --exceptional-soft: #dfe8f8;
   --breakout: #78c0a8;
   --breakout-soft: #deeee7;
-  --white: #ffffff;
+    /*
+   * Virality and Confidence Score colours.
+   *
+   * Virality reuses the existing breakout green.
+   * Confidence uses a warm gold that remains readable in both themes.
+   */
+  --confidence: #d6b56d;
+  --confidence-soft: #f3e8c7;
+  --confidence-text: #76570f;
+  --score-track: #d8ddd9;
+  --tooltip-surface: #242428;
+  --tooltip-text: #fffdf8;
+  --inverse-text: #ffffff;
+  --thumbnail-detail: #ffffff;
+  --floating-shadow: rgba(11, 11, 13, 0.14);
+  --field-background: #ffffff;
+  --field-text: #0b0b0d;
+  --field-placeholder: #777971;
+  --field-caret: #0b0b0d;
+  --sidebar-surface: rgba(255, 253, 248, 0.72);
+  --danger: #8d423c;
+  --danger-soft: #f2e7e1;
+  --landing-glow: rgba(255, 255, 255, 0.86);
+  --search-surface: rgba(255, 255, 255, 0.94);
+  --search-border: rgba(11, 11, 13, 0.12);
+  --search-shadow: 0 20px 60px rgba(58, 53, 42, 0.12);
+  --search-focus-shadow:
+    0 20px 60px rgba(58, 53, 42, 0.12),
+    0 0 0 4px rgba(107, 140, 206, 0.13);
+  --search-button-background: #0b0b0d;
+  --search-button-hover: #242428;
+  --search-button-text: #ffffff;
+  --search-button-divider: transparent;
+  --review-surface: rgba(255, 253, 248, 0.94);
+  --review-shadow: 0 28px 80px rgba(58, 53, 42, 0.1);
+  --exceptional-text: #344e82;
+  --breakout-text: #315f50;
+  --navigation-text: #4c4d4b;
+  --query-chip-text: #555653;
+  --error-text: #9c3f3f;
+  --locked-gradient-angle: 100deg;
+  --locked-exceptional-border: rgba(107, 140, 206, 0.28);
+  --locked-breakout-border: rgba(120, 192, 168, 0.5);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ink: #f7f4ed;
+  --muted: #b8b4aa;
+  --canvas: #0b0b0d;
+  --panel: #151518;
+  --line: #353238;
+  --exceptional-soft: #202c45;
+  --breakout-soft: #1e3831;
+  --inverse-text: #1b1b1f;
+  --floating-shadow: rgba(0, 0, 0, 0.4);
+  --field-background: #0b0b0d;
+  --field-text: #f7f4ed;
+  --field-placeholder: #92938d;
+  --field-caret: #f7f4ed;
+  --sidebar-surface: rgba(21, 21, 24, 0.96);
+  --danger: #ff9b8f;
+  --danger-soft: rgba(141, 66, 60, 0.28);
+  --landing-glow: rgba(247, 244, 237, 0.08);
+  --search-surface: #0b0b0d;
+  --search-border: #353238;
+  --search-shadow: none;
+  --search-focus-shadow: 0 0 0 4px rgba(107, 140, 206, 0.18);
+  --search-button-background: #0b0b0d;
+  --search-button-hover: #151518;
+  --search-button-text: #f7f4ed;
+  --search-button-divider: #353238;
+  --review-surface: #151518;
+  --review-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.4);
+  --exceptional-text: #6b8cce;
+  --breakout-text: #78c0a8;
+  --navigation-text: #b8b4aa;
+  --query-chip-text: #f7f4ed;
+  --error-text: #ff9b8f;
+  --locked-gradient-angle: 90deg;
+  --locked-exceptional-border: rgba(107, 140, 206, 0.5);
+  --locked-breakout-border: rgba(120, 192, 168, 0.55);
+  --confidence-soft: #3b321e;
+  --confidence-text: #d6b56d;
+  --score-track: #2b2c2f;
+  --tooltip-surface: #242428;
+  --tooltip-text: #f7f4ed;
 }
 
 * {
@@ -107,7 +196,7 @@ button {
   background:
     radial-gradient(
       circle at 50% 44%,
-      rgba(255, 255, 255, 0.86),
+      var(--landing-glow),
       transparent 34%
     ),
     var(--canvas);
@@ -200,17 +289,16 @@ button {
   display: flex;
   width: min(680px, 100%);
   padding: 0.45rem;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(11, 11, 13, 0.12);
+  overflow: hidden;
+  background: var(--search-surface);
+  border: 1px solid var(--search-border);
   border-radius: 999px;
-  box-shadow: 0 20px 60px rgba(58, 53, 42, 0.12);
+  box-shadow: var(--search-shadow);
 }
 
 .niche-form:focus-within {
   border-color: var(--exceptional);
-  box-shadow:
-    0 20px 60px rgba(58, 53, 42, 0.12),
-    0 0 0 4px rgba(107, 140, 206, 0.13);
+  box-shadow: var(--search-focus-shadow);
 }
 
 .niche-form input {
@@ -219,13 +307,15 @@ button {
   flex: 1;
   background: transparent;
   border: 0;
-  color: var(--ink);
+  color: var(--field-text);
+  caret-color: var(--field-caret);
   font-size: 1rem;
   outline: 0;
 }
 
 .niche-form input::placeholder {
-  color: #99968f;
+  color: var(--field-placeholder);
+  opacity: 1;
 }
 
 .niche-form button {
@@ -234,10 +324,11 @@ button {
   padding: 0 1.45rem;
   align-items: center;
   gap: 0.7rem;
-  background: var(--ink);
+  background: var(--search-button-background);
   border: 0;
   border-radius: 999px;
-  color: var(--white);
+  box-shadow: inset 1px 0 0 var(--search-button-divider);
+  color: var(--search-button-text);
   cursor: pointer;
   font-weight: 700;
   transition:
@@ -246,7 +337,7 @@ button {
 }
 
 .niche-form button:hover {
-  background: #242428;
+  background: var(--search-button-hover);
   transform: translateY(-1px);
 }
 
@@ -259,7 +350,7 @@ button {
 .form-error {
   min-height: 1.25rem;
   margin: 1rem 0 0;
-  color: #9c3f3f;
+  color: var(--error-text);
   font-size: 0.88rem;
   font-weight: 650;
 }
@@ -318,10 +409,10 @@ button {
 .review-card {
   margin-top: clamp(2rem, 7vh, 5rem);
   padding: clamp(1.5rem, 5vw, 3.8rem);
-  background: rgba(255, 253, 248, 0.94);
+  background: var(--review-surface);
   border: 1px solid var(--line);
   border-radius: 2rem;
-  box-shadow: 0 28px 80px rgba(58, 53, 42, 0.1);
+  box-shadow: var(--review-shadow);
 }
 
 .review-card h1 {
@@ -390,14 +481,14 @@ button {
   place-items: center;
   background: var(--exceptional-soft);
   border-radius: 50%;
-  color: #344e82;
+  color: var(--exceptional-text);
   font-size: 0.72rem;
   font-weight: 800;
 }
 
 .review-query-item:nth-child(even) .query-number {
   background: var(--breakout-soft);
-  color: #315f50;
+  color: var(--breakout-text);
 }
 
 .review-query-item input,
@@ -405,11 +496,18 @@ button {
   width: 100%;
   min-width: 0;
   padding: 0.9rem 1rem;
-  background: var(--white);
+  background: var(--field-background);
   border: 1px solid var(--line);
   border-radius: 0.85rem;
-  color: var(--ink);
+  color: var(--field-text);
+  caret-color: var(--field-caret);
   outline: 0;
+}
+
+.review-query-item input::placeholder,
+.add-query-row input::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
 }
 
 .review-query-item input:focus,
@@ -420,18 +518,18 @@ button {
 
 .review-query-item input.locked-query-input {
   background: linear-gradient(
-    100deg,
+    var(--locked-gradient-angle),
     var(--breakout-soft),
     var(--exceptional-soft)
   );
-  border-color: rgba(107, 140, 206, 0.28);
+  border-color: var(--locked-exceptional-border);
   color: var(--ink);
   cursor: not-allowed;
   font-weight: 700;
 }
 
 .review-query-item input.locked-query-input:focus {
-  border-color: rgba(107, 140, 206, 0.28);
+  border-color: var(--locked-exceptional-border);
   box-shadow: none;
 }
 
@@ -441,9 +539,9 @@ button {
   align-items: center;
   justify-content: center;
   background: var(--breakout-soft);
-  border: 1px solid rgba(120, 192, 168, 0.5);
+  border: 1px solid var(--locked-breakout-border);
   border-radius: 0.7rem;
-  color: #315f50;
+  color: var(--breakout-text);
   font-size: 0.7rem;
   font-weight: 750;
 }
@@ -458,9 +556,10 @@ button {
   font-size: 0.8rem;
 }
 
-.remove-query-button:hover {
-  background: #f2e7e1;
-  color: #8d423c;
+.remove-query-button:hover,
+.remove-query-button:focus-visible {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .add-query-row {
@@ -499,7 +598,7 @@ button {
   background: var(--ink);
   border: 0;
   border-radius: 999px;
-  color: var(--white);
+  color: var(--inverse-text);
   cursor: pointer;
   font-weight: 750;
 }
@@ -529,7 +628,7 @@ button {
   height: 100vh;
   padding: 2rem 1.35rem;
   flex-direction: column;
-  background: rgba(255, 253, 248, 0.72);
+  background: var(--sidebar-surface);
   border-right: 1px solid var(--line);
   backdrop-filter: blur(18px);
 }
@@ -560,7 +659,7 @@ button {
   gap: 0.7rem;
   background: var(--ink);
   border-radius: 0.8rem;
-  color: var(--white);
+  color: var(--inverse-text);
   font-weight: 700;
 }
 
@@ -577,7 +676,7 @@ button {
   gap: 0.8rem;
   background: transparent;
   border-radius: 0.75rem;
-  color: #4c4d4b;
+  color: var(--navigation-text);
   font-size: 0.9rem;
 }
 
@@ -648,7 +747,7 @@ button {
   background: var(--ink);
   border: 0;
   border-radius: 999px;
-  color: var(--white);
+  color: var(--inverse-text);
   cursor: pointer;
   font-weight: 700;
 }
@@ -686,8 +785,367 @@ button {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 999px;
-  color: #555653;
+  color: var(--query-chip-text);
   font-size: 0.76rem;
+}
+
+/*
+ * Virality and Confidence Score panel
+ */
+
+.score-panel {
+  margin-top: 2.2rem;
+  padding: 1.6rem 1.7rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+}
+
+.score-panel-heading {
+  margin-bottom: 1.15rem;
+}
+
+/*
+ * Place the two overall scores next to each other.
+ *
+ * The narrow middle column belongs to the divider.
+ */
+.score-overview {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    1px
+    minmax(0, 1fr);
+  align-items: stretch;
+  gap: 1.6rem;
+}
+
+.score-column {
+  min-width: 0;
+}
+
+.score-divider {
+  width: 1px;
+  background: var(--line);
+}
+
+/*
+ * Keep the score name and its information button together.
+ */
+.score-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.score-name-row h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+/*
+ * Information tooltip
+ *
+ * .score-info is the positioning container.
+ * The tooltip is positioned relative to this small container instead
+ * of relative to the entire page.
+ */
+.score-info {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+/*
+ * The visible circular "i" button.
+ */
+.score-info-button {
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  padding: 0;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--breakout);
+  border-radius: 50%;
+  color: var(--breakout-text);
+  cursor: help;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.confidence-info-button {
+  border-color: var(--confidence);
+  color: var(--confidence-text);
+}
+
+.score-info-button:hover {
+  background: var(--breakout-soft);
+}
+
+.confidence-info-button:hover {
+  background: var(--confidence-soft);
+}
+
+.score-info-button:focus-visible {
+  outline: 2px solid var(--exceptional);
+  outline-offset: 2px;
+}
+
+/*
+ * The tooltip starts invisible.
+ *
+ * pointer-events: none means the hidden tooltip cannot block clicks
+ * or interfere with nearby dashboard controls.
+ */
+.score-tooltip {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 0.7rem);
+  left: 50%;
+  width: 260px;
+  padding: 0.75rem 0.85rem;
+  background: var(--tooltip-surface);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.8rem 2rem var(--floating-shadow);
+  color: var(--tooltip-text);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 0.35rem);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    visibility 150ms ease;
+  visibility: hidden;
+}
+
+/*
+ * The Confidence tooltip is aligned to the right on larger screens.
+ * This reduces the chance of it extending outside the panel.
+ */
+.score-info-right .score-tooltip {
+  right: 0;
+  left: auto;
+  transform: translateY(0.35rem);
+}
+
+/*
+ * Show the tooltip when:
+ * - the mouse is over the information button;
+ * - the button receives keyboard or touch focus.
+ */
+.score-info-button:hover + .score-tooltip,
+.score-info-button:focus + .score-tooltip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  visibility: visible;
+}
+
+.score-info-right .score-info-button:hover + .score-tooltip,
+.score-info-right .score-info-button:focus + .score-tooltip {
+  transform: translateY(0);
+}
+
+/*
+ * Large score number and "/ 100" suffix.
+ */
+.score-number {
+  display: flex;
+  margin-top: 0.55rem;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.score-number strong {
+  color: var(--breakout);
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 780;
+  letter-spacing: -0.065em;
+  line-height: 1;
+}
+
+.score-number span {
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.confidence-score-number strong {
+  color: var(--confidence);
+}
+
+/*
+ * Human-readable labels such as "Strong" and "High confidence".
+ */
+.score-status {
+  margin: 0.55rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.virality-score-status {
+  color: var(--breakout-text);
+}
+
+.confidence-score-status {
+  color: var(--confidence-text);
+}
+
+/*
+ * Progress bars
+ *
+ * The outer element is the neutral track.
+ * JavaScript changes the width of the inner span.
+ */
+.score-progress {
+  height: 0.48rem;
+  margin-top: 0.55rem;
+  overflow: hidden;
+  background: var(--score-track);
+  border-radius: 999px;
+}
+
+.score-progress > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--breakout);
+  border-radius: inherit;
+  transition: width 500ms ease;
+}
+
+.confidence-score-progress > span {
+  background: var(--confidence);
+}
+
+/*
+ * Short interpretation underneath both overall scores.
+ */
+.virality-score-summary {
+  margin: 1.35rem 0 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+/*
+ * Collapsible score breakdown
+ */
+
+.score-breakdown {
+  margin-top: 0.9rem;
+}
+
+.score-breakdown summary {
+  display: flex;
+  width: max-content;
+  margin: 0 auto;
+  padding: 0.5rem 0.7rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 0.55rem;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  list-style: none;
+}
+
+.score-breakdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.score-breakdown summary:hover {
+  background: var(--breakout-soft);
+}
+
+.score-breakdown summary:focus-visible {
+  outline: 2px solid var(--exceptional);
+  outline-offset: 2px;
+}
+
+/*
+ * Only one of these labels appears at a time.
+ */
+.hide-breakdown-label {
+  display: none;
+}
+
+.score-breakdown[open] .show-breakdown-label {
+  display: none;
+}
+
+.score-breakdown[open] .hide-breakdown-label {
+  display: inline;
+}
+
+/*
+ * Rotate the small arrow when the dropdown opens.
+ */
+.breakdown-chevron {
+  display: inline-block;
+  color: var(--breakout-text);
+  font-size: 1rem;
+  transition: transform 180ms ease;
+}
+
+.score-breakdown[open] .breakdown-chevron {
+  transform: rotate(180deg);
+}
+
+/*
+ * Four Virality Score components.
+ *
+ * CSS Grid keeps all four equally sized on larger screens.
+ */
+.score-breakdown-grid {
+  display: grid;
+  margin-top: 0.9rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.breakdown-item {
+  min-width: 0;
+  padding: 0.95rem;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+}
+
+.breakdown-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.breakdown-heading h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.breakdown-heading strong {
+  flex: 0 0 auto;
+  color: var(--breakout-text);
+  font-size: 0.82rem;
+}
+
+.breakdown-item p {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .stats-grid {
@@ -822,8 +1280,8 @@ button {
 .result-row {
   display: grid;
   grid-template-columns:
-    55px minmax(260px, 2.3fr) repeat(4, minmax(82px, 0.72fr))
-    62px;
+    55px minmax(260px, 2.3fr)
+    repeat(4, minmax(82px, 0.72fr));
   align-items: center;
   gap: 0.8rem;
 }
@@ -838,11 +1296,13 @@ button {
 }
 
 .result-row {
+  position: relative;
   min-height: 90px;
   padding: 0.72rem 1rem;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 1rem;
+  cursor: pointer;
   transition:
     transform 160ms ease,
     box-shadow 160ms ease;
@@ -879,8 +1339,8 @@ button {
 .thumbnail {
   position: relative;
   display: grid;
-  width: 72px;
-  height: 50px;
+  width: 78px;
+  height: 44px;
   flex: 0 0 auto;
   place-items: center;
   overflow: hidden;
@@ -892,8 +1352,15 @@ button {
   border-radius: 0.65rem;
 }
 
-.thumbnail::before,
-.thumbnail::after {
+.thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-fallback::before,
+.thumbnail-fallback::after {
   position: absolute;
   width: 58px;
   height: 58px;
@@ -902,9 +1369,19 @@ button {
   content: "";
 }
 
-.thumbnail::after {
+.thumbnail-fallback::after {
   width: 34px;
   height: 34px;
+}
+
+.thumbnail-fallback i {
+  z-index: 1;
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid var(--thumbnail-detail);
 }
 
 .thumbnail i {
@@ -914,7 +1391,7 @@ button {
   margin-left: 3px;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 8px solid var(--white);
+  border-left: 8px solid var(--thumbnail-detail);
 }
 
 .result-video h3 {
@@ -937,15 +1414,16 @@ button {
   font-size: 0.79rem;
 }
 
-.result-row > a {
-  color: var(--ink);
-  font-size: 0.76rem;
-  font-weight: 760;
-  text-decoration: none;
+.result-row-link {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border-radius: inherit;
 }
 
-.result-row > a:hover {
-  text-decoration: underline;
+.result-row-link:focus-visible {
+  outline: 3px solid var(--exceptional);
+  outline-offset: 3px;
 }
 
 .empty-results {
@@ -956,6 +1434,85 @@ button {
   border-radius: 1rem;
   color: var(--muted);
   text-align: center;
+}
+
+/* Global light/dark theme control. */
+.theme-toggle {
+  position: fixed;
+  z-index: 1000;
+  top: 1.25rem;
+  right: 1.25rem;
+
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  place-items: center;
+
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  box-shadow: 0 0.8rem 2rem var(--floating-shadow);
+  color: var(--ink);
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--exceptional);
+  transform: translateY(-2px);
+}
+
+.theme-toggle:active {
+  transform: translateY(0);
+}
+
+.theme-toggle:focus-visible {
+  outline: 3px solid var(--exceptional);
+  outline-offset: 3px;
+}
+
+.theme-icon {
+  grid-area: 1 / 1;
+  width: 1.25rem;
+  height: 1.25rem;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.theme-icon-sun {
+  opacity: 0;
+  transform: rotate(-35deg) scale(0.7);
+}
+
+.theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+html[data-theme="dark"] .theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+html[data-theme="dark"] .theme-icon-moon {
+  opacity: 0;
+  transform: rotate(35deg) scale(0.7);
 }
 
 @media (max-width: 1050px) {
@@ -969,12 +1526,8 @@ button {
 
   .result-row {
     grid-template-columns:
-      42px minmax(220px, 1fr) repeat(3, minmax(72px, 0.55fr))
-      62px;
-  }
-
-  .result-row > span:nth-of-type(4) {
-    display: none;
+      42px minmax(220px, 1fr)
+      repeat(4, minmax(72px, 0.55fr));
   }
 }
 
@@ -1005,7 +1558,7 @@ button {
   }
 
   .result-row {
-    grid-template-columns: 36px minmax(0, 1fr) 52px;
+    grid-template-columns: 36px minmax(0, 1fr);
     padding: 0.8rem;
   }
 
@@ -1013,14 +1566,14 @@ button {
   .result-row > strong:not(.result-rank) {
     display: none;
   }
+}
 
-  .result-row > a {
-    font-size: 0;
-  }
-
-  .result-row > a::after {
-    content: "↗";
-    font-size: 1.15rem;
+@media (max-width: 640px) {
+  .theme-toggle {
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 2.75rem;
+    height: 2.75rem;
   }
 }
 
@@ -1133,8 +1686,8 @@ button {
   }
 
   .thumbnail {
-    width: 58px;
-    height: 44px;
+    width: 64px;
+    height: 36px;
   }
 
   .result-video h3 {
@@ -1148,5 +1701,137 @@ button {
   *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Query-relevance warning popup */
+
+.relevance-dialog {
+  width: min(620px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.75rem;
+  color: var(--ink);
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.28);
+}
+
+.relevance-dialog::backdrop {
+  background: rgba(7, 8, 12, 0.72);
+  backdrop-filter: blur(7px);
+}
+
+.relevance-dialog-card {
+  padding: clamp(1.5rem, 5vw, 2.7rem);
+}
+
+.relevance-dialog-card h2 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.relevance-dialog-description {
+  margin: 1rem 0 1.4rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.relevance-warning-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.relevance-warning-item {
+  display: grid;
+  padding: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.relevance-warning-copy {
+  min-width: 0;
+}
+
+.relevance-warning-query {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.relevance-warning-reason {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.relevance-warning-remove-button {
+  align-self: center;
+  justify-self: end;
+  font-size: 0.8rem;
+}
+
+.relevance-warning-remove-button::after {
+  content: none;
+}
+
+.relevance-dialog-note {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.relevance-dialog-actions {
+  display: flex;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+.continue-warning-button {
+  display: inline-flex;
+  min-height: 2.8rem;
+  padding: 0 1.1rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  color: var(--inverse-text);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.continue-warning-button:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .relevance-warning-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .relevance-dialog-actions {
+    flex-direction: column;
+  }
+
+  .relevance-dialog-actions button {
+    width: 100%;
+  }
+
+  .relevance-warning-remove-button {
+    width: auto;
+    font-size: 0.8rem;
   }
 }

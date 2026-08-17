@@ -72,6 +72,9 @@ def test_score_video_combines_storage_and_analytics() -> None:
             tzinfo=UTC,
         ),
     )
+    video.thumbnail_url = (
+        "https://images.example/video-123-medium.jpg"
+    )
 
     scored_video = score_video(
         video,
@@ -81,6 +84,9 @@ def test_score_video_combines_storage_and_analytics() -> None:
     assert scored_video.video_id == "video-123"
     assert scored_video.channel_name == ("Channel channel-123")
     assert scored_video.views == 250_000
+    assert scored_video.thumbnail_url == (
+        "https://images.example/video-123-medium.jpg"
+    )
     assert scored_video.metrics.views_per_day == (pytest.approx(250_000))
     assert scored_video.metrics.performance_label is PerformanceLabel.BREAKOUT
 

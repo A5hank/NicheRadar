@@ -13,6 +13,11 @@ YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3/"
 DEFAULT_TIMEOUT_SECONDS = 10.0
 MAX_IDS_PER_REQUEST = 50
 MAX_SHORT_DURATION_SECONDS = 180
+THUMBNAIL_SIZE_PREFERENCE = (
+    "medium",
+    "high",
+    "default",
+)
 
 _DURATION_PATTERN = re.compile(
     r"^P"
@@ -47,6 +52,7 @@ class VideoDetails:
     comment_count: int | None
     duration_seconds: int
     tags: tuple[str, ...]
+    thumbnail_url: str | None = None
 
     @property
     def is_short_candidate(self) -> bool:
@@ -137,6 +143,33 @@ def optional_int(value: Any) -> int | None:
         return None
 
 
+def select_thumbnail_url(
+    thumbnails: object,
+) -> str | None:
+    """Choose the most suitable available YouTube thumbnail URL."""
+
+    if not isinstance(thumbnails, dict):
+        return None
+
+    for size_name in THUMBNAIL_SIZE_PREFERENCE:
+        thumbnail = thumbnails.get(size_name)
+
+        if not isinstance(thumbnail, dict):
+            continue
+
+        url = thumbnail.get("url")
+
+        if not isinstance(url, str):
+            continue
+
+        cleaned_url = url.strip()
+
+        if cleaned_url:
+            return cleaned_url
+
+    return None
+
+
 def parse_video_resource(
     resource: dict[str, Any],
 ) -> VideoDetails:
@@ -194,6 +227,9 @@ def parse_video_resource(
         comment_count=optional_int(statistics.get("commentCount")),
         duration_seconds=parse_iso8601_duration(duration),
         tags=tags,
+        thumbnail_url=select_thumbnail_url(
+            snippet.get("thumbnails"),
+        ),
     )
 
 

@@ -55,6 +55,7 @@ def upsert_video_observation(
     niche: str,
     collected_date: date,
     tags: tuple[str, ...] = (),
+    thumbnail_url: str | None = None,
 ) -> tuple[Video, bool]:
     """Create or update one daily video observation."""
 
@@ -71,6 +72,7 @@ def upsert_video_observation(
             video_id=video_id,
             title=title,
             url=url,
+            thumbnail_url=thumbnail_url,
             channel_id=channel_id,
             views=views,
             likes=likes,
@@ -86,6 +88,7 @@ def upsert_video_observation(
     else:
         video.title = title
         video.url = url
+        video.thumbnail_url = thumbnail_url
         video.channel_id = channel_id
         video.views = views
         video.likes = likes

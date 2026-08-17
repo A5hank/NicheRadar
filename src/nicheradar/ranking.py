@@ -23,6 +23,7 @@ class ScoredVideo:
     views: int
     subscribers: int | None
     metrics: PerformanceMetrics
+    thumbnail_url: str | None = None
 
 
 def score_video(
@@ -54,6 +55,7 @@ def score_video(
         views=video.views,
         subscribers=video.subscribers,
         metrics=metrics,
+        thumbnail_url=video.thumbnail_url,
     )
 
 

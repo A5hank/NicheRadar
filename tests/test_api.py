@@ -223,6 +223,148 @@ def test_query_endpoint_handles_groq_failure(
         ),
     }
 
+def test_query_relevance_endpoint_returns_warnings(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """Clearly unrelated queries should produce warnings."""
+
+    groq_client.generate_json.return_value = {
+        "assessments": [
+            {
+                "index": 0,
+                "is_relevant": True,
+                "reason": (
+                    "Home workouts are directly related "
+                    "to gym content."
+                ),
+            },
+            {
+                "index": 1,
+                "is_relevant": False,
+                "reason": (
+                    "Minecraft survival is not related "
+                    "to gym content."
+                ),
+            },
+        ]
+    }
+
+    response = client.post(
+        "/api/query-relevance",
+        json={
+            "niche": "  Gym  ",
+            "queries": [
+                " Home workout routines ",
+                " Minecraft survival ",
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "Gym",
+        "warnings": [
+            {
+                "query": "Minecraft survival",
+                "reason": (
+                    "Minecraft survival is not related "
+                    "to gym content."
+                ),
+            }
+        ],
+    }
+
+    groq_client.generate_json.assert_called_once()
+
+def test_query_relevance_endpoint_accepts_related_queries(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """Related manually changed queries need no warning."""
+
+    groq_client.generate_json.return_value = {
+        "assessments": [
+            {
+                "index": 0,
+                "is_relevant": True,
+                "reason": (
+                    "Workout motivation is a useful "
+                    "gym content angle."
+                ),
+            }
+        ]
+    }
+
+    response = client.post(
+        "/api/query-relevance",
+        json={
+            "niche": "Gym",
+            "queries": [
+                "Workout motivation",
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "Gym",
+        "warnings": [],
+    }
+
+    groq_client.generate_json.assert_called_once()
+
+def test_query_relevance_endpoint_rejects_more_than_four_queries(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """At most four non-original queries can be checked."""
+
+    response = client.post(
+        "/api/query-relevance",
+        json={
+            "niche": "Gym",
+            "queries": [
+                "Query one",
+                "Query two",
+                "Query three",
+                "Query four",
+                "Query five",
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    groq_client.generate_json.assert_not_called()
+
+def test_query_relevance_endpoint_handles_invalid_groq_data(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """Malformed relevance output should become a safe response."""
+
+    groq_client.generate_json.return_value = {
+        "unexpected": [],
+    }
+
+    response = client.post(
+        "/api/query-relevance",
+        json={
+            "niche": "Gym",
+            "queries": [
+                "Minecraft survival",
+            ],
+        },
+    )
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": (
+            "Could not verify query relevance "
+            "right now."
+        ),
+    }
+
 
 def test_analysis_endpoint_returns_dashboard_data(
     client: TestClient,
@@ -232,8 +374,12 @@ def test_analysis_endpoint_returns_dashboard_data(
 
     video = SimpleNamespace(
         video_id="video-123",
+        channel_id="channel-123",
         title="Marvel Theory Explained",
         url="https://www.youtube.com/watch?v=video-123",
+        thumbnail_url=(
+            "https://images.example/video-123-medium.jpg"
+        ),
         channel_name="Marvel Analyst",
         upload_date=datetime(
             2026,
@@ -292,6 +438,9 @@ def test_analysis_endpoint_returns_dashboard_data(
     assert payload["videos"][0]["video_id"] == (
         "video-123"
     )
+    assert payload["videos"][0]["thumbnail_url"] == (
+        "https://images.example/video-123-medium.jpg"
+    )
     assert payload["videos"][0]["views"] == 250_000
     assert payload["videos"][0]["views_per_day"] == (
         125_000.0
@@ -314,6 +463,24 @@ def test_analysis_endpoint_returns_dashboard_data(
         "Avengers analysis",
         "Marvel character stories",
     ]
+
+    assert payload["virality_score"] == {
+        "score": 30,
+        "label": "emerging",
+        "breakdown": {
+            "breakout_points": 0,
+            "velocity_points": 30,
+            "exceptional_points": 0,
+            "diversity_points": 0,
+            "median_views_per_day": 125_000.0,
+            "unique_channel_count": 1,
+        },
+    }
+
+    assert payload["confidence_score"] == {
+        "score": 70,
+        "label": "good",
+    }
 
 
 def test_analysis_endpoint_rejects_duplicate_queries(

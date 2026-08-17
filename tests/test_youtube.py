@@ -11,6 +11,7 @@ from nicheradar.youtube import (
     YouTubeMetadataError,
     format_rfc3339_utc,
     parse_iso8601_duration,
+    select_thumbnail_url,
 )
 
 
@@ -39,6 +40,69 @@ def test_rfc3339_rejects_naive_datetime() -> None:
         match="timezone-aware",
     ):
         format_rfc3339_utc(value)
+
+def test_thumbnail_selector_prefers_medium_size() -> None:
+    """Medium thumbnails should be preferred for dashboard cards."""
+
+    thumbnails = {
+        "default": {
+            "url": "https://images.example/default.jpg",
+        },
+        "medium": {
+            "url": "  https://images.example/medium.jpg  ",
+        },
+        "high": {
+            "url": "https://images.example/high.jpg",
+        },
+    }
+
+    thumbnail_url = select_thumbnail_url(thumbnails)
+
+    assert thumbnail_url == "https://images.example/medium.jpg"
+
+
+def test_thumbnail_selector_uses_next_valid_size() -> None:
+    """Malformed preferred thumbnails should not prevent a fallback."""
+
+    thumbnails = {
+        "medium": {
+            "url": "   ",
+        },
+        "high": {
+            "url": "https://images.example/high.jpg",
+        },
+        "default": {
+            "url": "https://images.example/default.jpg",
+        },
+    }
+
+    thumbnail_url = select_thumbnail_url(thumbnails)
+
+    assert thumbnail_url == "https://images.example/high.jpg"
+
+
+@pytest.mark.parametrize(
+    "thumbnails",
+    [
+        None,
+        [],
+        {},
+        {
+            "medium": None,
+        },
+        {
+            "medium": {
+                "url": "   ",
+            }
+        },
+    ],
+)
+def test_thumbnail_selector_handles_missing_metadata(
+    thumbnails: object,
+) -> None:
+    """Missing thumbnail metadata should produce no thumbnail URL."""
+
+    assert select_thumbnail_url(thumbnails) is None
 
 
 def test_search_returns_video_ids() -> None:
@@ -204,6 +268,26 @@ def test_fetches_video_and_channel_details() -> None:
                                     "AI",
                                     "automation",
                                 ],
+                                "thumbnails": {
+                                    "default": {
+                                        "url": (
+                                            "https://images.example/"
+                                            "video-123-default.jpg"
+                                        ),
+                                    },
+                                    "medium": {
+                                        "url": (
+                                            "https://images.example/"
+                                            "video-123-medium.jpg"
+                                        ),
+                                    },
+                                    "high": {
+                                        "url": (
+                                            "https://images.example/"
+                                            "video-123-high.jpg"
+                                        ),
+                                    },
+                                },
                             },
                             "contentDetails": {
                                 "duration": "PT1M12S",
@@ -261,6 +345,9 @@ def test_fetches_video_and_channel_details() -> None:
     assert video.like_count == 42_000
     assert video.comment_count == 1_200
     assert video.tags == ("AI", "automation")
+    assert video.thumbnail_url == (
+        "https://images.example/video-123-medium.jpg"
+    )
     assert video.is_short_candidate is True
 
     assert channel.channel_title == "Practical AI"
