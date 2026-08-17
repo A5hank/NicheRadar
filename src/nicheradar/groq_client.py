@@ -6,7 +6,7 @@ from types import TracebackType
 import httpx
 
 GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_GROQ_MODEL = "llama-3.1-8b-instant"
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
@@ -97,11 +97,26 @@ class GroqClient:
         system_prompt: str,
         user_prompt: str,
         max_completion_tokens: int = 300,
+        response_schema: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """Ask Groq for a response containing one JSON object."""
 
         if max_completion_tokens < 1:
             raise ValueError("max_completion_tokens must be at least 1")
+
+        response_format: dict[str, object] = {
+            "type": "json_object",
+        }
+
+        if response_schema is not None:
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "nicheradar_response",
+                    "strict": True,
+                    "schema": response_schema,
+                },
+            }
 
         request_payload = {
             "model": self.model,
@@ -117,9 +132,7 @@ class GroqClient:
             ],
             "temperature": 0.2,
             "max_completion_tokens": max_completion_tokens,
-            "response_format": {
-                "type": "json_object",
-            },
+            "response_format": response_format,
         }
 
         try:

@@ -175,6 +175,56 @@
         </div>
       </section>
 
+      <dialog
+        id="relevance-dialog"
+        class="relevance-dialog"
+        aria-labelledby="relevance-dialog-title"
+        aria-describedby="relevance-dialog-description"
+      >
+        <div class="relevance-dialog-card">
+          <p class="eyebrow">Query check</p>
+
+          <h2 id="relevance-dialog-title">
+            No clear relation found
+          </h2>
+
+          <p
+            id="relevance-dialog-description"
+            class="relevance-dialog-description"
+          >
+            One or more searches may not be related to your original niche.
+          </p>
+
+          <div
+            id="relevance-warning-list"
+            class="relevance-warning-list"
+          ></div>
+
+          <p class="relevance-dialog-note">
+            Keeping unrelated searches may make the final results less useful.
+          </p>
+
+          <div class="relevance-dialog-actions">
+            <button
+              id="edit-relevance-queries-button"
+              class="quiet-button"
+              type="button"
+            >
+              Back to queries
+            </button>
+
+            <button
+              id="continue-despite-warning-button"
+              class="continue-warning-button"
+              type="button"
+            >
+              Continue anyway
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+        </div>
+      </dialog>
+
       <section id="dashboard-view" class="dashboard-view" hidden>
         <aside class="sidebar">
           <a class="brand" href="#" aria-label="NicheRadar home">

@@ -26,6 +26,28 @@ Rules:
 - Do not repeat the original niche.
 """.strip()
 
+def build_query_expansion_response_schema(
+    alternative_query_count: int,
+) -> dict[str, object]:
+    """Build the exact JSON structure expected from Groq."""
+
+    return {
+        "type": "object",
+        "properties": {
+            "queries": {
+                "type": "array",
+                "items": {
+                    "type": "string",
+                },
+                "minItems": alternative_query_count,
+                "maxItems": alternative_query_count,
+            },
+        },
+        "required": [
+            "queries",
+        ],
+        "additionalProperties": False,
+    }
 
 class QueryExpansionError(ValueError):
     """Raised when query expansion data is unusable."""
@@ -77,6 +99,11 @@ def expand_niche_queries(
             "alternative search queries."
         ),
         max_completion_tokens=250,
+        response_schema=(
+            build_query_expansion_response_schema(
+                additional_query_count
+            )
+        ),
     )
 
     raw_queries = response.get("queries")

@@ -54,6 +54,33 @@ const reviewBackButton = document.querySelector(
 );
 
 /*
+ * Query-relevance warning popup elements.
+ */
+const relevanceDialog = document.querySelector(
+  "#relevance-dialog",
+);
+
+const relevanceDialogTitle = document.querySelector(
+  "#relevance-dialog-title",
+);
+
+const relevanceDialogDescription = document.querySelector(
+  "#relevance-dialog-description",
+);
+
+const relevanceWarningList = document.querySelector(
+  "#relevance-warning-list",
+);
+
+const editRelevanceQueriesButton = document.querySelector(
+  "#edit-relevance-queries-button",
+);
+
+const continueDespiteWarningButton = document.querySelector(
+  "#continue-despite-warning-button",
+);
+
+/*
  * Dashboard elements
  */
 const dashboardTitle = document.querySelector("#dashboard-title");
@@ -98,8 +125,11 @@ const MAX_QUERY_COUNT = 5;
  * These variables hold the browser's current state.
  */
 let activeNiche = "";
+let originalSuggestedQueries = [];
 let reviewedQueries = [];
+let relevanceWarnings = [];
 let isGeneratingQueries = false;
+let isCheckingRelevance = false;
 let isRunningAnalysis = false;
 
 /*
@@ -308,10 +338,61 @@ async function requestQuerySuggestions(niche) {
 }
 
 /*
- * Send the approved five queries to the complete analysis API.
+ * Ask FastAPI to assess manually added or edited queries.
+ *
+ * This endpoint only uses Groq. It does not begin YouTube collection.
+ */
+async function requestQueryRelevance(niche, queries) {
+  const response = await fetch("/api/query-relevance", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      niche,
+      queries,
+    }),
+  });
+
+  const payload = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(
+      extractApiError(
+        payload,
+        "NicheRadar could not verify query relevance.",
+      ),
+    );
+  }
+
+  const warningsAreValid =
+    Array.isArray(payload?.warnings) &&
+    payload.warnings.every(
+      (warning) =>
+        warning &&
+        typeof warning === "object" &&
+        typeof warning.query === "string" &&
+        typeof warning.reason === "string",
+    );
+
+  if (
+    !payload ||
+    typeof payload.niche !== "string" ||
+    !warningsAreValid
+  ) {
+    throw new Error(
+      "NicheRadar received an invalid relevance response.",
+    );
+  }
+
+  return payload;
+}
+
+/*
+ * Send the approved queries to the complete analysis API.
  *
  * FastAPI will:
- * - search YouTube using all five queries;
+ * - search YouTube using every approved query;
  * - combine and deduplicate the videos;
  * - select the top videos by total views;
  * - rank the selected videos by views per day;
@@ -368,16 +449,223 @@ function renderQueries(queries) {
 }
 
 /*
- * Compare queries without being affected by capitalisation.
+ * Normalize query text in the same general way as the backend.
  *
- * Therefore "Marvel News" and "marvel news" are treated as duplicates.
+ * Leading and trailing whitespace is removed, and consecutive whitespace
+ * characters are collapsed into one ordinary space.
+ */
+function normalizeQueryText(query) {
+  return query.trim().replace(/\s+/g, " ");
+}
+
+/*
+ * Create a case-insensitive comparison value for one query.
+ */
+function queryComparisonKey(query) {
+  return normalizeQueryText(query).toLowerCase();
+}
+
+/*
+ * Check whether every query is unique after normalization.
  */
 function queriesAreUnique(queries) {
-  const normalizedQueries = queries.map((query) =>
-    query.trim().toLowerCase(),
+  const comparisonKeys = queries.map(
+    queryComparisonKey,
   );
 
-  return new Set(normalizedQueries).size === normalizedQueries.length;
+  return (
+    new Set(comparisonKeys).size ===
+    comparisonKeys.length
+  );
+}
+
+/*
+ * Return only queries that were added or changed by the user.
+ *
+ * The locked original niche at index zero is deliberately excluded.
+ */
+function getQueriesNeedingRelevanceCheck() {
+  const originalSuggestionKeys = new Set(
+    originalSuggestedQueries.map(
+      queryComparisonKey,
+    ),
+  );
+
+  return reviewedQueries
+    .slice(1)
+    .map(normalizeQueryText)
+    .filter(
+      (query) =>
+        !originalSuggestionKeys.has(
+          queryComparisonKey(query),
+        ),
+    );
+}
+
+/*
+ * Close the popup if it is currently visible.
+ */
+function closeRelevanceDialog() {
+  if (relevanceDialog.open) {
+    relevanceDialog.close();
+  }
+}
+
+
+/*
+ * Remove all old warning state.
+ *
+ * This is used whenever the user changes the reviewed queries so an old
+ * warning can never be applied to a newer query list.
+ */
+function resetRelevanceWarnings() {
+  relevanceWarnings = [];
+  relevanceWarningList.replaceChildren();
+  closeRelevanceDialog();
+}
+
+
+/*
+ * Rebuild the list of unrelated queries shown inside the popup.
+ */
+function renderRelevanceWarnings() {
+  relevanceWarningList.replaceChildren();
+
+  relevanceWarnings.forEach((warning) => {
+    const item = document.createElement("div");
+    item.className = "relevance-warning-item";
+
+    const copy = document.createElement("div");
+    copy.className = "relevance-warning-copy";
+
+    const queryName = document.createElement("strong");
+    queryName.className = "relevance-warning-query";
+    queryName.textContent = warning.query;
+
+    const reason = document.createElement("p");
+    reason.className = "relevance-warning-reason";
+    reason.textContent =
+      warning.reason ||
+      `This query does not appear related to ${activeNiche}.`;
+
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+
+    /*
+     * Reusing remove-query-button gives this button the same appearance
+     * and hover behaviour as the existing query removal controls.
+     */
+    removeButton.className =
+      "remove-query-button relevance-warning-remove-button";
+
+    removeButton.textContent = "Remove";
+    removeButton.setAttribute(
+      "aria-label",
+      `Remove unrelated query ${warning.query}`,
+    );
+
+    removeButton.addEventListener("click", () => {
+      const warningKey = queryComparisonKey(
+        warning.query,
+      );
+
+      const queryIndex = reviewedQueries.findIndex(
+        (query, index) =>
+          index > 0 &&
+          queryComparisonKey(query) === warningKey,
+      );
+
+      if (queryIndex !== -1) {
+        reviewedQueries.splice(queryIndex, 1);
+      }
+
+      relevanceWarnings = relevanceWarnings.filter(
+        (existingWarning) =>
+          queryComparisonKey(existingWarning.query) !==
+          warningKey,
+      );
+
+      renderQueryReview();
+
+      reviewError.textContent =
+        reviewValidationMessage();
+
+      if (relevanceWarnings.length === 0) {
+        resetRelevanceWarnings();
+        runAnalysisButton.focus();
+        return;
+      }
+
+      renderRelevanceWarnings();
+    });
+
+    copy.append(queryName, reason);
+    item.append(copy, removeButton);
+    relevanceWarningList.append(item);
+  });
+}
+
+
+/*
+ * Display the popup for the warnings returned by the backend.
+ */
+function showRelevanceWarnings(warnings) {
+  relevanceWarnings = [...warnings];
+
+  const warningCount = relevanceWarnings.length;
+  const multipleWarnings = warningCount !== 1;
+
+  relevanceDialogTitle.textContent = multipleWarnings
+    ? "Some queries have no clear relation"
+    : "No clear relation found";
+
+  relevanceDialogDescription.textContent =
+    multipleWarnings
+      ? (
+          `${warningCount} searches do not appear clearly related ` +
+          `to “${activeNiche}”.`
+        )
+      : (
+          `This search does not appear clearly related ` +
+          `to “${activeNiche}”.`
+        );
+
+  renderRelevanceWarnings();
+
+  if (!relevanceDialog.open) {
+    relevanceDialog.showModal();
+  }
+}
+
+
+/*
+ * Close the popup and focus the first query that received a warning.
+ */
+function returnToWarnedQuery() {
+  const firstWarning = relevanceWarnings[0];
+
+  const warningIndex = firstWarning
+    ? reviewedQueries.findIndex(
+        (query) =>
+          queryComparisonKey(query) ===
+          queryComparisonKey(firstWarning.query),
+      )
+    : -1;
+
+  resetRelevanceWarnings();
+
+  window.requestAnimationFrame(() => {
+    const queryInputs =
+      reviewQueryList.querySelectorAll("input");
+
+    if (warningIndex > 0 && queryInputs[warningIndex]) {
+      queryInputs[warningIndex].focus();
+      queryInputs[warningIndex].select();
+      return;
+    }
+
+    newQueryInput.focus();
+  });
 }
 
 /*
@@ -400,13 +688,13 @@ function reviewValidationMessage() {
     return "Every query needs some text.";
   }
 
-  const originalQuery = reviewedQueries[0]
-    .trim()
-    .toLowerCase();
+  const originalQuery = queryComparisonKey(
+    reviewedQueries[0],
+  );
 
-  const normalizedNiche = activeNiche
-    .trim()
-    .toLowerCase();
+  const normalizedNiche = queryComparisonKey(
+    activeNiche,
+  );
 
   if (originalQuery !== normalizedNiche) {
     return "The original niche must remain as query one.";
@@ -425,38 +713,60 @@ function reviewValidationMessage() {
  * During analysis, the inputs and buttons are disabled so the user cannot
  * change the queries after the request has already been sent.
  */
+/*
+ * Keep the query-review controls synchronized with the current state.
+ *
+ * The controls are locked during both relevance checking and YouTube
+ * analysis so the submitted query list cannot change midway through a
+ * request.
+ */
 function updateReviewControls() {
   const count = reviewedQueries.length;
-  const validationMessage = reviewValidationMessage();
-  const queryLabel = count === 1 ? "query" : "queries";
+  const validationMessage =
+    reviewValidationMessage();
+
+  const queryLabel =
+    count === 1 ? "query" : "queries";
+
+  const reviewIsBusy =
+    isCheckingRelevance || isRunningAnalysis;
 
   queryCount.textContent =
     `${count} ${queryLabel} ready · maximum ${MAX_QUERY_COUNT}`;
 
   addQueryButton.disabled =
-    isRunningAnalysis || count >= MAX_QUERY_COUNT;
+    reviewIsBusy || count >= MAX_QUERY_COUNT;
 
   newQueryInput.disabled =
-    isRunningAnalysis || count >= MAX_QUERY_COUNT;
+    reviewIsBusy || count >= MAX_QUERY_COUNT;
 
   runAnalysisButton.disabled =
-    isRunningAnalysis || Boolean(validationMessage);
+    reviewIsBusy || Boolean(validationMessage);
 
-  reviewBackButton.disabled = isRunningAnalysis;
+  reviewBackButton.disabled = reviewIsBusy;
 
-  runAnalysisButtonLabel.textContent = isRunningAnalysis
-    ? "Analysing videos..."
-    : "Use these queries";
+  if (isCheckingRelevance) {
+    runAnalysisButtonLabel.textContent =
+      "Checking queries...";
+  } else if (isRunningAnalysis) {
+    runAnalysisButtonLabel.textContent =
+      "Analysing videos...";
+  } else {
+    runAnalysisButtonLabel.textContent =
+      "Use these queries";
+  }
 
   runAnalysisButton.setAttribute(
     "aria-busy",
-    String(isRunningAnalysis),
+    String(reviewIsBusy),
   );
 
-  for (const control of reviewQueryList.querySelectorAll(
-    "input, button",
-  )) {
-    control.disabled = isRunningAnalysis;
+  for (
+    const control of reviewQueryList.querySelectorAll(
+      "input, button",
+    )
+  ) {
+    control.disabled = reviewIsBusy;
   }
 }
 
@@ -502,9 +812,13 @@ function renderQueryReview() {
       );
 
       input.addEventListener("input", () => {
+        resetRelevanceWarnings();
+
         reviewedQueries[index] = input.value;
+
         reviewError.textContent =
           reviewValidationMessage();
+
         updateReviewControls();
       });
 
@@ -523,6 +837,8 @@ function renderQueryReview() {
       );
 
       removeButton.addEventListener("click", () => {
+        resetRelevanceWarnings();
+
         reviewedQueries.splice(index, 1);
         renderQueryReview();
 
@@ -547,7 +863,9 @@ function renderQueryReview() {
  * Add the text from the "Add another query" field.
  */
 function addReviewedQuery() {
-  const query = newQueryInput.value.trim();
+  const query = normalizeQueryText(
+    newQueryInput.value,
+  );
 
   if (reviewedQueries.length >= MAX_QUERY_COUNT) {
     reviewError.textContent =
@@ -564,7 +882,8 @@ function addReviewedQuery() {
 
   const queryAlreadyExists = reviewedQueries.some(
     (item) =>
-      item.trim().toLowerCase() === query.toLowerCase(),
+      queryComparisonKey(item) ===
+      queryComparisonKey(query),
   );
 
   if (queryAlreadyExists) {
@@ -574,6 +893,7 @@ function addReviewedQuery() {
     return;
   }
 
+  resetRelevanceWarnings();
   reviewedQueries.push(query);
   newQueryInput.value = "";
   renderQueryReview();
@@ -756,7 +1076,14 @@ function setLandingBusy(isBusy) {
  */
 function showReview(niche, queries) {
   activeNiche = niche;
-  reviewedQueries = [...queries];
+
+  originalSuggestedQueries = queries.map(
+    normalizeQueryText,
+  );
+
+  reviewedQueries = [
+    ...originalSuggestedQueries,
+  ];
 
   reviewNiche.textContent = niche;
   reviewError.textContent = "";
@@ -895,54 +1222,150 @@ newQueryInput.addEventListener("keydown", (event) => {
 });
 
 /*
+ * Run the real YouTube analysis after the queries have either:
+ *
+ * 1. Passed the relevance check, or
+ * 2. Been explicitly approved with "Continue anyway".
+ */
+async function runApprovedAnalysis() {
+  if (isRunningAnalysis) {
+    return;
+  }
+
+  resetRelevanceWarnings();
+  reviewError.textContent = "";
+
+  isRunningAnalysis = true;
+  updateReviewControls();
+
+  try {
+    const analysis = await requestAnalysis(
+      activeNiche,
+      reviewedQueries,
+    );
+
+    showDashboard(analysis);
+  } catch (error) {
+    reviewError.textContent =
+      error instanceof Error
+        ? error.message
+        : "NicheRadar could not complete the analysis.";
+  } finally {
+    isRunningAnalysis = false;
+    updateReviewControls();
+  }
+}
+
+/*
  * Query-review submission:
- * 1. Clean the five queries.
- * 2. Validate them.
- * 3. Send them to /api/analyses.
- * 4. Display the real dashboard.
+ *
+ * 1. Normalize and validate the approved queries.
+ * 2. Find queries that were added or edited by the user.
+ * 3. Ask the backend to check only those changed queries.
+ * 4. Show a popup when any changed query appears unrelated.
+ * 5. Otherwise begin the real YouTube analysis.
  */
 queryReviewForm.addEventListener(
   "submit",
   async (event) => {
     event.preventDefault();
 
-    if (isRunningAnalysis) {
+    if (isCheckingRelevance || isRunningAnalysis) {
       return;
     }
 
     reviewedQueries = reviewedQueries.map(
-      (query) => query.trim(),
+      normalizeQueryText,
     );
+
+    renderQueryReview();
 
     const validationMessage =
       reviewValidationMessage();
 
     if (validationMessage) {
       reviewError.textContent = validationMessage;
-      renderQueryReview();
       return;
     }
 
     reviewError.textContent = "";
-    isRunningAnalysis = true;
+    resetRelevanceWarnings();
+
+    const queriesToCheck =
+      getQueriesNeedingRelevanceCheck();
+
+    /*
+     * Unchanged Groq suggestions are already related by design.
+     * If nothing was manually added or edited, skip another Groq request.
+     */
+    if (queriesToCheck.length === 0) {
+      await runApprovedAnalysis();
+      return;
+    }
+
+    let relevanceReview;
+
+    isCheckingRelevance = true;
     updateReviewControls();
 
     try {
-      const analysis = await requestAnalysis(
-        activeNiche,
-        reviewedQueries,
-      );
-
-      showDashboard(analysis);
+      relevanceReview =
+        await requestQueryRelevance(
+          activeNiche,
+          queriesToCheck,
+        );
     } catch (error) {
       reviewError.textContent =
         error instanceof Error
           ? error.message
-          : "NicheRadar could not complete the analysis.";
+          : "NicheRadar could not check these queries.";
+
+      return;
     } finally {
-      isRunningAnalysis = false;
+      isCheckingRelevance = false;
       updateReviewControls();
     }
+
+    if (relevanceReview.warnings.length > 0) {
+      showRelevanceWarnings(
+        relevanceReview.warnings,
+      );
+
+      return;
+    }
+
+    await runApprovedAnalysis();
+  },
+);
+
+/*
+ * Return to editing without starting the YouTube analysis.
+ */
+editRelevanceQueriesButton.addEventListener(
+  "click",
+  returnToWarnedQuery,
+);
+
+
+/*
+ * The warning is advisory, so the user may deliberately include the query.
+ */
+continueDespiteWarningButton.addEventListener(
+  "click",
+  async () => {
+    await runApprovedAnalysis();
+  },
+);
+
+
+/*
+ * Pressing Escape behaves like "Back to queries".
+ */
+relevanceDialog.addEventListener(
+  "cancel",
+  (event) => {
+    event.preventDefault();
+    returnToWarnedQuery();
   },
 );
 

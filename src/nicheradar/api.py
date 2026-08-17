@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
+import logging
+
 from fastapi import (
     Depends,
     FastAPI,
@@ -44,8 +46,16 @@ from nicheradar.query_expansion import (
     expand_niche_queries,
     normalize_query,
 )
+
+from nicheradar.query_relevance import (
+    MAX_QUERIES_TO_ASSESS,
+    QueryRelevanceError,
+    assess_query_relevance,
+)
+
 from nicheradar.youtube import YouTubeClient
 
+LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIRECTORY = PROJECT_ROOT / "frontend"
@@ -86,6 +96,77 @@ class QueryExpansionResponse(BaseModel):
     niche: str
     queries: list[str]
 
+class QueryRelevanceRequest(BaseModel):
+    """User-added queries that should be checked for relevance."""
+
+    niche: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+    queries: list[str] = Field(
+        min_length=1,
+        max_length=MAX_QUERIES_TO_ASSESS,
+    )
+
+    @field_validator("niche")
+    @classmethod
+    def normalize_niche(
+        cls,
+        value: str,
+    ) -> str:
+        """Normalize and validate the original niche."""
+
+        cleaned_niche = normalize_query(value)
+
+        if not cleaned_niche:
+            raise ValueError("niche must not be empty")
+
+        return cleaned_niche
+
+    @field_validator("queries")
+    @classmethod
+    def validate_queries(
+        cls,
+        values: list[str],
+    ) -> list[str]:
+        """Normalize and require unique non-empty queries."""
+
+        cleaned_queries = [
+            normalize_query(value)
+            for value in values
+        ]
+
+        if any(
+            not query
+            for query in cleaned_queries
+        ):
+            raise ValueError(
+                "queries must not contain empty values"
+            )
+
+        comparison_keys = {
+            query.casefold()
+            for query in cleaned_queries
+        }
+
+        if len(comparison_keys) != len(cleaned_queries):
+            raise ValueError("queries must be unique")
+
+        return cleaned_queries
+
+
+class QueryRelevanceWarningResponse(BaseModel):
+    """One query that may not belong to the niche."""
+
+    query: str
+    reason: str
+
+
+class QueryRelevanceResponse(BaseModel):
+    """Browser-facing warnings for reviewed queries."""
+
+    niche: str
+    warnings: list[QueryRelevanceWarningResponse]
 
 class AnalysisRequest(BaseModel):
     """One to five approved search queries submitted for analysis."""
@@ -353,6 +434,11 @@ def generate_search_queries(
         GroqAPIError,
         QueryExpansionError,
     ) as error:
+        LOGGER.exception(
+            "Query expansion failed for niche %r.",
+            request.niche,
+        )
+
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=(
@@ -364,6 +450,51 @@ def generate_search_queries(
     return QueryExpansionResponse(
         niche=expansion.niche,
         queries=list(expansion.queries),
+    )
+
+@app.post(
+    "/api/query-relevance",
+    response_model=QueryRelevanceResponse,
+    tags=["analysis"],
+)
+def review_query_relevance(
+    request: QueryRelevanceRequest,
+    groq_client: Annotated[
+        GroqClient,
+        Depends(get_groq_client),
+    ],
+) -> QueryRelevanceResponse:
+    """Warn about manually changed queries that seem unrelated."""
+
+    try:
+        review = assess_query_relevance(
+            groq_client,
+            request.niche,
+            request.queries,
+        )
+    except (
+        GroqAPIError,
+        QueryRelevanceError,
+    ) as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Could not verify query relevance "
+                "right now."
+            ),
+        ) from error
+
+    warnings = [
+        QueryRelevanceWarningResponse(
+            query=warning.query,
+            reason=warning.reason,
+        )
+        for warning in review.warnings
+    ]
+
+    return QueryRelevanceResponse(
+        niche=review.niche,
+        warnings=warnings,
     )
 
 
@@ -379,7 +510,7 @@ def analyze_niche(
         Depends(get_analysis_runner),
     ],
 ) -> AnalysisResponse:
-    """Run NicheRadar using five approved queries."""
+    """Run NicheRadar using the approved queries."""
 
     try:
         analysis = analysis_runner(request)
