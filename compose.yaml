@@ -1,0 +1,40 @@
+services:
+  nicheradar:
+    build:
+      context: .
+      dockerfile: Containerfile
+
+    image: localhost/nicheradar:local
+    container_name: nicheradar-app
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    env_file:
+      - .env
+
+    environment:
+      DATABASE_URL: sqlite:////app/data/nicheradar.db
+      APP_ENV: local
+
+    volumes:
+      - nicheradar-data:/app/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    restart: unless-stopped
+
+volumes:
+  nicheradar-data:
+    name: nicheradar-data
