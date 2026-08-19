@@ -1,0 +1,47 @@
+# Version-control data
+
+.git
+.gitignore
+
+# Local Python environment
+
+.venv
+**pycache**/
+_.py[cod]
+_.egg-info/
+
+# Test and development caches
+
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build output
+
+build/
+dist/
+
+# Secrets
+
+.env
+.env.\*
+!.env.example
+
+# Local runtime data
+
+data/
+_.db
+_.sqlite
+\*.sqlite3
+
+# Tests are not needed in the runtime image
+
+tests/
+
+# Editor and operating-system files
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
