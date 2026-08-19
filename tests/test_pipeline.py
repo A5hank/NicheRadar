@@ -62,9 +62,7 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
                                 "title": "AI Workflow Short",
                                 "channelId": "channel-123",
                                 "channelTitle": "Practical AI",
-                                "publishedAt": (
-                                    "2026-08-13T12:00:00Z"
-                                ),
+                                "publishedAt": ("2026-08-13T12:00:00Z"),
                                 "tags": [
                                     "AI",
                                     "productivity",
@@ -103,13 +101,9 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
                 },
             )
 
-        raise AssertionError(
-            f"Unexpected endpoint: {request.url.path}"
-        )
+        raise AssertionError(f"Unexpected endpoint: {request.url.path}")
 
-    engine = create_database_engine(
-        "sqlite+pysqlite:///:memory:"
-    )
+    engine = create_database_engine("sqlite+pysqlite:///:memory:")
     transport = httpx.MockTransport(handler)
 
     try:
@@ -157,17 +151,10 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
         assert video.views == 250_000
         assert video.metrics.views_per_day == 250_000
         assert video.metrics.subscriber_multiplier == 50.0
-        assert (
-            video.metrics.performance_label
-            is PerformanceLabel.BREAKOUT
-        )
+        assert video.metrics.performance_label is PerformanceLabel.BREAKOUT
 
         with session_factory() as session:
-            stored_video = session.scalar(
-                select(Video).where(
-                    Video.video_id == "video-123"
-                )
-            )
+            stored_video = session.scalar(select(Video).where(Video.video_id == "video-123"))
 
             assert stored_video is not None
             assert stored_video.views == 250_000

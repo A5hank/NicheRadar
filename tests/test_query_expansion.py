@@ -56,6 +56,58 @@ def test_one_query_does_not_call_groq() -> None:
     client.generate_json.assert_not_called()
 
 
+def test_expansion_accepts_ten_total_queries() -> None:
+    """Expansion should support one niche and nine alternatives."""
+
+    client = Mock(spec=GroqClient)
+
+    alternative_queries = [f"Marvel angle {index}" for index in range(1, 10)]
+
+    client.generate_json.return_value = {
+        "queries": alternative_queries,
+    }
+
+    expansion = expand_niche_queries(
+        client,
+        "Marvel",
+        query_count=10,
+    )
+
+    assert expansion.queries == (
+        "Marvel",
+        *alternative_queries,
+    )
+
+    request_arguments = client.generate_json.call_args.kwargs
+
+    assert request_arguments["max_completion_tokens"] == 450
+
+    response_schema = request_arguments["response_schema"]
+
+    query_schema = response_schema["properties"]["queries"]
+
+    assert query_schema["minItems"] == 9
+    assert query_schema["maxItems"] == 9
+
+
+def test_expansion_rejects_more_than_ten_queries() -> None:
+    """Expansion should reject an eleventh query."""
+
+    client = Mock(spec=GroqClient)
+
+    with pytest.raises(
+        ValueError,
+        match="between 1 and 10",
+    ):
+        expand_niche_queries(
+            client,
+            "Marvel",
+            query_count=11,
+        )
+
+    client.generate_json.assert_not_called()
+
+
 def test_expansion_rejects_missing_query_list() -> None:
     """Malformed Groq output should be rejected clearly."""
 

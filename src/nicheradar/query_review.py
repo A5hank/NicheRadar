@@ -97,8 +97,7 @@ def add_query(
 
     if len(queries) >= MAX_QUERY_COUNT:
         raise QueryReviewError(
-            f"{MAX_QUERY_COUNT} queries already exist; "
-            "remove or replace one first"
+            f"{MAX_QUERY_COUNT} queries already exist; remove or replace one first"
         )
 
     cleaned_query = _validate_new_query(
@@ -157,7 +156,7 @@ def validate_approved_queries(
     niche: str,
     queries: Sequence[str],
 ) -> tuple[str, ...]:
-    """Validate and freeze between one and five approved queries."""
+    """Validate and freeze between one and ten approved queries."""
 
     cleaned_niche = normalize_query(niche)
 
@@ -166,44 +165,29 @@ def validate_approved_queries(
 
     if not MIN_QUERY_COUNT <= len(queries) <= MAX_QUERY_COUNT:
         raise QueryReviewError(
-            f"between {MIN_QUERY_COUNT} and "
-            f"{MAX_QUERY_COUNT} queries are required"
+            f"between {MIN_QUERY_COUNT} and {MAX_QUERY_COUNT} queries are required"
         )
 
     cleaned_queries: list[str] = []
 
     for query in queries:
         if not isinstance(query, str):
-            raise QueryReviewError(
-                "every query must be a string"
-            )
+            raise QueryReviewError("every query must be a string")
 
         cleaned_query = normalize_query(query)
 
         if not cleaned_query:
-            raise QueryReviewError(
-                "queries must not be empty"
-            )
+            raise QueryReviewError("queries must not be empty")
 
         cleaned_queries.append(cleaned_query)
 
-    if (
-        cleaned_queries[0].casefold()
-        != cleaned_niche.casefold()
-    ):
-        raise QueryReviewError(
-            "the first query must be the original niche"
-        )
+    if cleaned_queries[0].casefold() != cleaned_niche.casefold():
+        raise QueryReviewError("the first query must be the original niche")
 
-    comparison_keys = {
-        query.casefold()
-        for query in cleaned_queries
-    }
+    comparison_keys = {query.casefold() for query in cleaned_queries}
 
     if len(comparison_keys) != len(cleaned_queries):
-        raise QueryReviewError(
-            "all queries must be unique"
-        )
+        raise QueryReviewError("all queries must be unique")
 
     return tuple(cleaned_queries)
 
@@ -230,10 +214,7 @@ def format_review_queries(
     lines.extend(
         [
             "",
-            (
-                f"{len(queries)}/{MAX_QUERY_COUNT} queries selected "
-                f"(minimum {MIN_QUERY_COUNT})"
-            ),
+            (f"{len(queries)}/{MAX_QUERY_COUNT} queries selected (minimum {MIN_QUERY_COUNT})"),
             "",
             "Commands:",
             "  add <query>",
@@ -253,7 +234,7 @@ def review_queries_interactively(
     input_function: Callable[[str], str] = input,
     output_function: Callable[[str], None] = print,
 ) -> tuple[str, ...]:
-    """Let a terminal user edit and approve upto five queries."""
+    """Let a terminal user edit and approve upto ten queries."""
 
     queries = prepare_review_queries(
         niche=niche,

@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from nicheradar.groq_client import GroqClient
 
-DEFAULT_QUERY_COUNT = 5
-MAX_QUERY_COUNT = 5
+DEFAULT_QUERY_COUNT = 10
+MAX_QUERY_COUNT = 10
 
 QUERY_EXPANSION_SYSTEM_PROMPT = """
 You generate focused YouTube search queries for NicheRadar.
@@ -25,6 +25,7 @@ Rules:
 - Do not add "Shorts" merely to make queries different.
 - Do not repeat the original niche.
 """.strip()
+
 
 def build_query_expansion_response_schema(
     alternative_query_count: int,
@@ -48,6 +49,7 @@ def build_query_expansion_response_schema(
         ],
         "additionalProperties": False,
     }
+
 
 class QueryExpansionError(ValueError):
     """Raised when query expansion data is unusable."""
@@ -98,12 +100,8 @@ def expand_niche_queries(
             f"Generate exactly {additional_query_count} "
             "alternative search queries."
         ),
-        max_completion_tokens=250,
-        response_schema=(
-            build_query_expansion_response_schema(
-                additional_query_count
-            )
-        ),
+        max_completion_tokens=450,
+        response_schema=(build_query_expansion_response_schema(additional_query_count)),
     )
 
     raw_queries = response.get("queries")

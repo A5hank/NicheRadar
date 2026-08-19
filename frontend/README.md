@@ -19,9 +19,8 @@ Then open `http://localhost:8000` in your browser.
 
 - Enter submits the landing-page search form.
 - An empty niche displays a validation error.
-- A valid niche opens a query-review screen with five suggested searches.
-- Queries can be edited, removed, and added; analysis stays disabled until
-  exactly five non-empty, unique queries are approved.
+- A valid niche opens a query-review screen with ten suggested searches.
+- Queries can be edited, removed, and added; analysis stays disabled until between one and ten non-empty, unique queries are approved.
 - Approving the queries switches to the results dashboard.
 - Breakout rows use `#78C0A8`.
 - Exceptional-performance rows use `#6B8CCE`.

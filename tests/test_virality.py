@@ -38,10 +38,7 @@ def test_breakout_point_tiers(
 ) -> None:
     """Every breakout boundary should award its approved points."""
 
-    assert (
-        calculate_breakout_points(breakout_count)
-        == expected_points
-    )
+    assert calculate_breakout_points(breakout_count) == expected_points
 
 
 @pytest.mark.parametrize(
@@ -60,29 +57,35 @@ def test_velocity_point_boundaries(
 ) -> None:
     """Velocity should use logarithmic scaling and remain capped."""
 
-    assert (
-        calculate_velocity_points(median_velocity)
-        == expected_points
-    )
+    assert calculate_velocity_points(median_velocity) == expected_points
 
 
 def test_exceptional_points_use_returned_video_rate() -> None:
     """Five exceptional videos out of fifty should earn full points."""
 
-    assert calculate_exceptional_points(
-        exceptional_count=1,
-        video_count=50,
-    ) == 3
+    assert (
+        calculate_exceptional_points(
+            exceptional_count=1,
+            video_count=50,
+        )
+        == 3
+    )
 
-    assert calculate_exceptional_points(
-        exceptional_count=5,
-        video_count=50,
-    ) == 15
+    assert (
+        calculate_exceptional_points(
+            exceptional_count=5,
+            video_count=50,
+        )
+        == 15
+    )
 
-    assert calculate_exceptional_points(
-        exceptional_count=20,
-        video_count=50,
-    ) == 15
+    assert (
+        calculate_exceptional_points(
+            exceptional_count=20,
+            video_count=50,
+        )
+        == 15
+    )
 
 
 @pytest.mark.parametrize(
@@ -106,10 +109,7 @@ def test_creator_diversity_tiers(
 ) -> None:
     """Unique-channel boundaries should award their tier points."""
 
-    assert (
-        calculate_diversity_points(unique_channels)
-        == expected_points
-    )
+    assert calculate_diversity_points(unique_channels) == expected_points
 
 
 def test_calculates_complete_virality_score() -> None:
@@ -153,10 +153,7 @@ def test_candidate_coverage_tiers(
 ) -> None:
     """Candidate coverage should use ranges rather than exact values."""
 
-    assert (
-        calculate_candidate_points(videos_considered)
-        == expected_points
-    )
+    assert calculate_candidate_points(videos_considered) == expected_points
 
 
 @pytest.mark.parametrize(
@@ -181,10 +178,7 @@ def test_ranked_result_tiers(
 ) -> None:
     """Ranked sample depth should use the approved ranges."""
 
-    assert (
-        calculate_result_points(videos_returned)
-        == expected_points
-    )
+    assert calculate_result_points(videos_returned) == expected_points
 
 
 @pytest.mark.parametrize(
@@ -213,23 +207,19 @@ def test_subscriber_completeness_tiers(
     """Subscriber completeness should use percentage ranges."""
 
     points, percentage = calculate_subscriber_points(
-        videos_with_subscriber_data=(
-            known_subscriber_counts
-        ),
+        videos_with_subscriber_data=(known_subscriber_counts),
         videos_returned=50,
     )
 
     assert points == expected_points
-    assert percentage == pytest.approx(
-        known_subscriber_counts / 50 * 100
-    )
+    assert percentage == pytest.approx(known_subscriber_counts / 50 * 100)
 
 
 def test_calculates_complete_confidence_score() -> None:
     """The agreed mockup inputs should produce 94 confidence."""
 
     result = calculate_confidence_score(
-        query_count=5,
+        query_count=10,
         videos_considered=400,
         videos_returned=50,
         videos_with_subscriber_data=40,
@@ -241,10 +231,55 @@ def test_calculates_complete_confidence_score() -> None:
     assert result.candidate_points == 25
     assert result.result_points == 25
     assert result.subscriber_points == 24
-    assert (
-        result.subscriber_completeness_percent
-        == pytest.approx(80)
+    assert result.subscriber_completeness_percent == pytest.approx(80)
+
+
+@pytest.mark.parametrize(
+    ("query_count", "expected_points"),
+    [
+        (1, 2),
+        (5, 10),
+        (10, 20),
+    ],
+)
+def test_confidence_query_points_scale_with_query_coverage(
+    query_count: int,
+    expected_points: int,
+) -> None:
+    """Query confidence should scale to a maximum of 20 points."""
+
+    result = calculate_confidence_score(
+        query_count=query_count,
+        videos_considered=400,
+        videos_returned=50,
+        videos_with_subscriber_data=40,
     )
+
+    assert result.query_points == expected_points
+
+
+@pytest.mark.parametrize(
+    "query_count",
+    [
+        0,
+        11,
+    ],
+)
+def test_confidence_rejects_unsupported_query_counts(
+    query_count: int,
+) -> None:
+    """Confidence should reject query counts outside the supported range."""
+
+    with pytest.raises(
+        ValueError,
+        match="query_count must be between 1 and 10",
+    ):
+        calculate_confidence_score(
+            query_count=query_count,
+            videos_considered=400,
+            videos_returned=50,
+            videos_with_subscriber_data=40,
+        )
 
 
 def test_no_results_force_confidence_to_zero() -> None:

@@ -83,10 +83,7 @@ def test_collection_saves_valid_short_candidates() -> None:
                                 "publishedAt": ("2026-08-13T12:00:00Z"),
                                 "thumbnails": {
                                     "medium": {
-                                        "url": (
-                                            "https://images.example/"
-                                            "short-video-medium.jpg"
-                                        ),
+                                        "url": ("https://images.example/short-video-medium.jpg"),
                                     },
                                 },
                                 "tags": [
@@ -190,10 +187,7 @@ def test_collection_saves_valid_short_candidates() -> None:
                 "AI",
                 "productivity",
             ]
-            assert stored_video.thumbnail_url == (
-                "https://images.example/"
-                "short-video-medium.jpg"
-            )
+            assert stored_video.thumbnail_url == ("https://images.example/short-video-medium.jpg")
 
             assert stored_channel is not None
             assert stored_channel.video_count == 120
