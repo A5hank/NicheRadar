@@ -159,34 +159,11 @@ button {
 }
 
 .radar-mark {
-  position: relative;
-  display: inline-grid;
+  display: block;
   width: 2rem;
   height: 2rem;
-  place-items: center;
-  border: 2px solid var(--exceptional);
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 5px var(--canvas);
-}
-
-.radar-mark::before {
-  width: 0.8rem;
-  height: 0.8rem;
-  border: 2px solid var(--breakout);
-  border-radius: 50%;
-  content: "";
-}
-
-.radar-mark::after {
-  position: absolute;
-  top: 0.18rem;
-  right: 0.15rem;
-  width: 0.38rem;
-  height: 0.38rem;
-  background: var(--breakout);
-  border: 2px solid var(--panel);
-  border-radius: 50%;
-  content: "";
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .landing-view {

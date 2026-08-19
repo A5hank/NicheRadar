@@ -9,12 +9,17 @@
     />
     <title>NicheRadar</title>
 
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/assets/nicheradar-mark.svg"
+    />
+
     <script>
       (() => {
         const storageKey = "nicheradar-theme";
-        const systemTheme = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+          .matches
           ? "dark"
           : "light";
 
@@ -80,13 +85,23 @@
     </button>
 
     <main>
-      <section id="landing-view" class="landing-view" aria-labelledby="landing-title">
+      <section
+        id="landing-view"
+        class="landing-view"
+        aria-labelledby="landing-title"
+      >
         <div class="landing-blob landing-blob-blue" aria-hidden="true"></div>
         <div class="landing-blob landing-blob-green" aria-hidden="true"></div>
 
         <header class="landing-header">
           <a class="brand" href="#" aria-label="NicheRadar home">
-            <span class="radar-mark" aria-hidden="true"><span></span></span>
+            <img
+              class="radar-mark"
+              src="/assets/nicheradar-mark.svg"
+              alt=""
+              width="32"
+              height="32"
+            />
             <span>NicheRadar</span>
           </a>
         </header>
@@ -110,7 +125,10 @@
               autofocus
             />
             <button id="start-analysis-button" type="submit">
-              <span id="start-analysis-button-label" class="start-analysis-label">
+              <span
+                id="start-analysis-button-label"
+                class="start-analysis-label"
+              >
                 Analyse
               </span>
               <span class="button-arrow" aria-hidden="true">&rarr;</span>
@@ -118,15 +136,33 @@
           </form>
 
           <p id="form-error" class="form-error" role="alert"></p>
-          <p class="search-hint">You can try Cooking, Minecraft, AI Productivity Tools etc.</p>
+          <p class="search-hint">
+            You can try Cooking, Minecraft, AI Productivity Tools etc.
+          </p>
         </div>
       </section>
 
-      <section id="review-view" class="review-view" aria-labelledby="review-title" hidden>
+      <section
+        id="review-view"
+        class="review-view"
+        aria-labelledby="review-title"
+        hidden
+      >
         <div class="review-shell">
           <header class="review-header">
-            <a class="brand" href="#" data-home-link aria-label="NicheRadar home">
-              <span class="radar-mark" aria-hidden="true"><span></span></span>
+            <a
+              class="brand"
+              href="#"
+              data-home-link
+              aria-label="NicheRadar home"
+            >
+              <img
+                class="radar-mark"
+                src="/assets/nicheradar-mark.svg"
+                alt=""
+                width="32"
+                height="32"
+              />
               <span>NicheRadar</span>
             </a>
             <button id="review-back-button" class="quiet-button" type="button">
@@ -138,8 +174,9 @@
             <p class="eyebrow">One quick check</p>
             <h1 id="review-title">Shape the search</h1>
             <p class="review-intro">
-              Your original niche stays locked. Keep any of the suggested searches,
-              remove the ones you do not need, or add your own — up to five in total.
+              Your original niche stays locked. Keep any of the suggested
+              searches, remove the ones you do not need, or add your own — up to
+              five in total.
             </p>
 
             <form id="query-review-form" novalidate>
@@ -148,13 +185,17 @@
                   <span>Analysing</span>
                   <strong id="review-niche">Marvel</strong>
                 </div>
-                <p id="query-count" aria-live="polite">1 to 5 queries allowed</p>
+                <p id="query-count" aria-live="polite">
+                  1 to 5 queries allowed
+                </p>
               </div>
 
               <div id="review-query-list" class="review-query-list"></div>
 
               <div class="add-query-row">
-                <label class="sr-only" for="new-query-input">Add another query</label>
+                <label class="sr-only" for="new-query-input"
+                  >Add another query</label
+                >
                 <input
                   id="new-query-input"
                   type="text"
@@ -164,9 +205,17 @@
                 <button id="add-query-button" type="button">Add query</button>
               </div>
 
-              <p id="review-error" class="form-error review-error" role="alert"></p>
+              <p
+                id="review-error"
+                class="form-error review-error"
+                role="alert"
+              ></p>
 
-              <button id="run-analysis-button" class="run-analysis-button" type="submit">
+              <button
+                id="run-analysis-button"
+                class="run-analysis-button"
+                type="submit"
+              >
                 <span id="run-analysis-button-label">Use these queries</span>
                 <span aria-hidden="true">&rarr;</span>
               </button>
@@ -184,9 +233,7 @@
         <div class="relevance-dialog-card">
           <p class="eyebrow">Query check</p>
 
-          <h2 id="relevance-dialog-title">
-            No clear relation found
-          </h2>
+          <h2 id="relevance-dialog-title">No clear relation found</h2>
 
           <p
             id="relevance-dialog-description"
@@ -195,10 +242,7 @@
             One or more searches may not be related to your original niche.
           </p>
 
-          <div
-            id="relevance-warning-list"
-            class="relevance-warning-list"
-          ></div>
+          <div id="relevance-warning-list" class="relevance-warning-list"></div>
 
           <p class="relevance-dialog-note">
             Keeping unrelated searches may make the final results less useful.
@@ -228,12 +272,22 @@
       <section id="dashboard-view" class="dashboard-view" hidden>
         <aside class="sidebar">
           <a class="brand" href="#" aria-label="NicheRadar home">
-            <span class="radar-mark" aria-hidden="true"><span></span></span>
+            <img
+              class="radar-mark"
+              src="/assets/nicheradar-mark.svg"
+              alt=""
+              width="32"
+              height="32"
+            />
             <span>NicheRadar</span>
           </a>
 
           <nav class="sidebar-nav" aria-label="NicheRadar navigation">
-            <button id="new-analysis-button" class="new-analysis-button" type="button">
+            <button
+              id="new-analysis-button"
+              class="new-analysis-button"
+              type="button"
+            >
               <span aria-hidden="true">+</span>
               New analysis
             </button>
@@ -256,7 +310,11 @@
               <h1 id="dashboard-title">Marvel</h1>
               <p>What&rsquo;s moving in this niche right now.</p>
             </div>
-            <button id="mobile-new-analysis" class="mobile-new-analysis" type="button">
+            <button
+              id="mobile-new-analysis"
+              class="mobile-new-analysis"
+              type="button"
+            >
               New analysis
             </button>
           </header>
@@ -269,14 +327,8 @@
             <div id="query-list" class="query-list"></div>
           </section>
 
-          <section
-            class="score-panel"
-            aria-labelledby="score-panel-heading"
-          >
-            <h2
-              id="score-panel-heading"
-              class="eyebrow score-panel-heading"
-            >
+          <section class="score-panel" aria-labelledby="score-panel-heading">
+            <h2 id="score-panel-heading" class="eyebrow score-panel-heading">
               Niche virality
             </h2>
 
@@ -391,13 +443,9 @@
 
             <details id="score-breakdown" class="score-breakdown">
               <summary>
-                <span class="show-breakdown-label">
-                  View score breakdown
-                </span>
+                <span class="show-breakdown-label"> View score breakdown </span>
 
-                <span class="hide-breakdown-label">
-                  Hide score breakdown
-                </span>
+                <span class="hide-breakdown-label"> Hide score breakdown </span>
 
                 <span class="breakdown-chevron" aria-hidden="true">
                   &#8964;
@@ -466,21 +514,27 @@
 
           <section class="stats-grid" aria-label="Analysis highlights">
             <article class="stat-card videos-stat">
-              <span class="stat-icon mixed-icon" aria-hidden="true">&#9673;</span>
+              <span class="stat-icon mixed-icon" aria-hidden="true"
+                >&#9673;</span
+              >
               <div>
                 <p>Videos considered</p>
                 <strong id="videos-considered-count">0</strong>
               </div>
             </article>
             <article class="stat-card breakout-stat">
-              <span class="stat-icon breakout-icon" aria-hidden="true">&#8599;</span>
+              <span class="stat-icon breakout-icon" aria-hidden="true"
+                >&#8599;</span
+              >
               <div>
                 <p>Breakout highlights</p>
                 <strong id="breakout-count">0</strong>
               </div>
             </article>
             <article class="stat-card exceptional-stat">
-              <span class="stat-icon exceptional-icon" aria-hidden="true">&#9733;</span>
+              <span class="stat-icon exceptional-icon" aria-hidden="true"
+                >&#9733;</span
+              >
               <div>
                 <p>Exceptional highlights</p>
                 <strong id="exceptional-count">0</strong>
@@ -501,7 +555,11 @@
               </div>
             </div>
 
-            <div class="results-table" role="table" aria-label="Top video results">
+            <div
+              class="results-table"
+              role="table"
+              aria-label="Top video results"
+            >
               <div class="table-header" role="row">
                 <span>Rank</span>
                 <span>Video</span>

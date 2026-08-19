@@ -96,9 +96,17 @@ def test_frontend_assets_are_served(
 
     css_response = client.get("/styles.css")
     javascript_response = client.get("/app.js")
+    logo_response = client.get(
+        "/assets/nicheradar-mark.svg"
+    )
 
     assert css_response.status_code == 200
     assert javascript_response.status_code == 200
+    assert logo_response.status_code == 200
+    assert logo_response.headers["content-type"].startswith(
+        "image/svg+xml"
+    )
+    assert b"<svg" in logo_response.content
 
 def test_analysis_request_accepts_original_niche_only() -> None:
     """A single locked niche query should be valid."""
