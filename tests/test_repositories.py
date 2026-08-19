@@ -119,10 +119,7 @@ def test_upserts_update_instead_of_duplicate() -> None:
             save_sample_video(
                 session,
                 views=800_000,
-                thumbnail_url=(
-                    "https://images.example/"
-                    "video-123-original.jpg"
-                ),
+                thumbnail_url=("https://images.example/video-123-original.jpg"),
             )
 
         with session_factory.begin() as session:
@@ -135,34 +132,23 @@ def test_upserts_update_instead_of_duplicate() -> None:
             video, video_created = save_sample_video(
                 session,
                 views=900_000,
-                thumbnail_url=(
-                    "https://images.example/"
-                    "video-123-updated.jpg"
-                ),
+                thumbnail_url=("https://images.example/video-123-updated.jpg"),
             )
 
             assert channel_created is False
             assert video_created is False
             assert channel.subscriber_count == 5_500
             assert video.views == 900_000
-            assert video.thumbnail_url == (
-                "https://images.example/"
-                "video-123-updated.jpg"
-            )
+            assert video.thumbnail_url == ("https://images.example/video-123-updated.jpg")
 
         with session_factory() as session:
-            video_count = session.scalar(
-                select(func.count()).select_from(Video)
-            )
+            video_count = session.scalar(select(func.count()).select_from(Video))
             stored_video = session.scalar(select(Video))
 
             assert video_count == 1
             assert stored_video is not None
             assert stored_video.views == 900_000
-            assert stored_video.thumbnail_url == (
-                "https://images.example/"
-                "video-123-updated.jpg"
-            )
+            assert stored_video.thumbnail_url == ("https://images.example/video-123-updated.jpg")
     finally:
         engine.dispose()
 

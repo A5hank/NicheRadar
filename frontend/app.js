@@ -147,14 +147,14 @@ const LIGHT_THEME = "light";
 const DARK_THEME = "dark";
 
 /*
- * Every analysis can contain upto five unique queries.
+ * Every analysis can contain upto ten unique queries.
  *
  * The backend also validates this rule, but validating in JavaScript means
  * the user receives an immediate message without making an unnecessary
  * network request.
  */
 const MIN_QUERY_COUNT = 1;
-const MAX_QUERY_COUNT = 5;
+const MAX_QUERY_COUNT = 10;
 
 /*
  * These variables hold the browser's current state.

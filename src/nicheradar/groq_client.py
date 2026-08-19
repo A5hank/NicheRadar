@@ -35,6 +35,7 @@ def extract_groq_error_message(
 
     return f"HTTP {response.status_code}"
 
+
 def is_json_schema_generation_failure(
     response: httpx.Response,
 ) -> bool:
@@ -50,10 +51,8 @@ def is_json_schema_generation_failure(
         "failed to validate json",
     )
 
-    return any(
-        failure_message in message
-        for failure_message in known_generation_failures
-    )
+    return any(failure_message in message for failure_message in known_generation_failures)
+
 
 class GroqClient:
     """Small synchronous client for JSON responses from Groq."""
@@ -122,9 +121,7 @@ class GroqClient:
                 json=request_payload,
             )
         except httpx.RequestError as error:
-            raise GroqAPIError(
-                "Could not connect to the Groq API."
-            ) from error
+            raise GroqAPIError("Could not connect to the Groq API.") from error
 
     def generate_json(
         self,
@@ -175,8 +172,7 @@ class GroqClient:
         )
 
         should_use_json_object_fallback = (
-            response_schema is not None
-            and is_json_schema_generation_failure(response)
+            response_schema is not None and is_json_schema_generation_failure(response)
         )
 
         if should_use_json_object_fallback:
@@ -195,9 +191,7 @@ class GroqClient:
                 error.response,
             )
 
-            raise GroqAPIError(
-                f"Groq API request failed: {message}"
-            ) from error
+            raise GroqAPIError(f"Groq API request failed: {message}") from error
 
         try:
             response_payload = response.json()

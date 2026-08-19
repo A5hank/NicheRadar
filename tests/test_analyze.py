@@ -153,11 +153,7 @@ def test_build_analysis_report_preserves_result_order() -> None:
 
     report = build_analysis_report(analysis)
 
-    assert report.index(
-        "Videos considered:"
-    ) < report.index(
-        "Videos saved:"
-    )
+    assert report.index("Videos considered:") < report.index("Videos saved:")
 
     assert "Breakout highlights: 1" in report
     assert "Exceptional-performance highlights: 1" in report

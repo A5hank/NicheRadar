@@ -1,5 +1,6 @@
 """HTTP API and frontend server for NicheRadar."""
 
+import logging
 from collections.abc import (
     Callable,
     Iterator,
@@ -8,14 +9,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
-import logging
-
 from fastapi import (
     Depends,
     FastAPI,
     HTTPException,
     status,
 )
+from fastapi.responses import FileResponse
 from pydantic import (
     BaseModel,
     Field,
@@ -46,21 +46,18 @@ from nicheradar.query_expansion import (
     expand_niche_queries,
     normalize_query,
 )
-
 from nicheradar.query_relevance import (
     MAX_QUERIES_TO_ASSESS,
     QueryRelevanceError,
     assess_query_relevance,
 )
-
-from nicheradar.youtube import YouTubeClient
-
 from nicheradar.virality import (
     ConfidenceLabel,
     ViralityLabel,
     calculate_confidence_score,
     calculate_virality_score,
 )
+from nicheradar.youtube import YouTubeClient
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,9 +65,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FRONTEND_DIRECTORY = PROJECT_ROOT / "frontend"
 
 if not FRONTEND_DIRECTORY.is_dir():
-    raise RuntimeError(
-        f"Frontend directory does not exist: {FRONTEND_DIRECTORY}"
-    )
+    raise RuntimeError(f"Frontend directory does not exist: {FRONTEND_DIRECTORY}")
 
 
 class QueryExpansionRequest(BaseModel):
@@ -102,6 +97,7 @@ class QueryExpansionResponse(BaseModel):
 
     niche: str
     queries: list[str]
+
 
 class QueryRelevanceRequest(BaseModel):
     """User-added queries that should be checked for relevance."""
@@ -138,23 +134,12 @@ class QueryRelevanceRequest(BaseModel):
     ) -> list[str]:
         """Normalize and require unique non-empty queries."""
 
-        cleaned_queries = [
-            normalize_query(value)
-            for value in values
-        ]
+        cleaned_queries = [normalize_query(value) for value in values]
 
-        if any(
-            not query
-            for query in cleaned_queries
-        ):
-            raise ValueError(
-                "queries must not contain empty values"
-            )
+        if any(not query for query in cleaned_queries):
+            raise ValueError("queries must not contain empty values")
 
-        comparison_keys = {
-            query.casefold()
-            for query in cleaned_queries
-        }
+        comparison_keys = {query.casefold() for query in cleaned_queries}
 
         if len(comparison_keys) != len(cleaned_queries):
             raise ValueError("queries must be unique")
@@ -175,8 +160,9 @@ class QueryRelevanceResponse(BaseModel):
     niche: str
     warnings: list[QueryRelevanceWarningResponse]
 
+
 class AnalysisRequest(BaseModel):
-    """One to five approved search queries submitted for analysis."""
+    """One to ten approved search queries submitted for analysis."""
 
     niche: str = Field(
         min_length=1,
@@ -210,28 +196,15 @@ class AnalysisRequest(BaseModel):
     ) -> list[str]:
         """Require unique, non-empty search queries."""
 
-        cleaned_queries = [
-            normalize_query(value)
-            for value in values
-        ]
+        cleaned_queries = [normalize_query(value) for value in values]
 
-        if any(
-            not query
-            for query in cleaned_queries
-        ):
-            raise ValueError(
-                "queries must not contain empty values"
-            )
+        if any(not query for query in cleaned_queries):
+            raise ValueError("queries must not contain empty values")
 
-        comparison_keys = {
-            query.casefold()
-            for query in cleaned_queries
-        }
+        comparison_keys = {query.casefold() for query in cleaned_queries}
 
         if len(comparison_keys) != len(cleaned_queries):
-            raise ValueError(
-                "queries must be unique"
-            )
+            raise ValueError("queries must be unique")
 
         return cleaned_queries
 
@@ -241,13 +214,8 @@ class AnalysisRequest(BaseModel):
     ) -> "AnalysisRequest":
         """Require the locked original niche as query one."""
 
-        if (
-            self.queries[0].casefold()
-            != self.niche.casefold()
-        ):
-            raise ValueError(
-                "queries must begin with the original niche"
-            )
+        if self.queries[0].casefold() != self.niche.casefold():
+            raise ValueError("queries must begin with the original niche")
 
         return self
 
@@ -267,6 +235,7 @@ class AnalysisVideoResponse(BaseModel):
     subscribers: int | None
     subscriber_multiplier: float | None
     performance: PerformanceLabel
+
 
 class ViralityBreakdownResponse(BaseModel):
     """Component values used by the expandable score breakdown."""
@@ -292,6 +261,7 @@ class ConfidenceScoreResponse(BaseModel):
 
     score: int
     label: ConfidenceLabel
+
 
 class AnalysisResponse(BaseModel):
     """Complete browser-facing NicheRadar result."""
@@ -324,9 +294,7 @@ def get_groq_client() -> Iterator[GroqClient]:
             detail="Groq API key is not configured.",
         )
 
-    with GroqClient(
-        settings.groq_api_key
-    ) as groq_client:
+    with GroqClient(settings.groq_api_key) as groq_client:
         yield groq_client
 
 
@@ -343,25 +311,19 @@ def execute_niche_analysis(
             detail="YouTube API key is not configured.",
         )
 
-    engine = create_database_engine(
-        settings.database_url
-    )
+    engine = create_database_engine(settings.database_url)
 
     try:
         create_database_schema(engine)
         session_factory = create_session_factory(engine)
 
-        with YouTubeClient(
-            settings.youtube_api_key
-        ) as youtube_client:
+        with YouTubeClient(settings.youtube_api_key) as youtube_client:
             with session_factory.begin() as session:
                 return run_niche_analysis(
                     client=youtube_client,
                     session=session,
                     niche=request.niche,
-                    search_queries=tuple(
-                        request.queries
-                    ),
+                    search_queries=tuple(request.queries),
                 )
     finally:
         engine.dispose()
@@ -391,16 +353,10 @@ def build_analysis_response(
             channel_name=video.channel_name,
             upload_date=video.upload_date,
             views=video.views,
-            views_per_day=(
-                video.metrics.views_per_day
-            ),
+            views_per_day=(video.metrics.views_per_day),
             subscribers=video.subscribers,
-            subscriber_multiplier=(
-                video.metrics.subscriber_multiplier
-            ),
-            performance=(
-                video.metrics.performance_label
-            ),
+            subscriber_multiplier=(video.metrics.subscriber_multiplier),
+            performance=(video.metrics.performance_label),
         )
         for rank, video in enumerate(
             result_videos,
@@ -408,86 +364,41 @@ def build_analysis_response(
         )
     ]
 
-    unique_channel_count = len(
-        {
-            video.channel_id
-            for video in result_videos
-        }
-    )
+    unique_channel_count = len({video.channel_id for video in result_videos})
 
-    videos_with_subscriber_data = sum(
-        video.subscribers is not None
-        for video in result_videos
-    )
+    videos_with_subscriber_data = sum(video.subscribers is not None for video in result_videos)
 
     virality = calculate_virality_score(
-        views_per_day=(
-            video.metrics.views_per_day
-            for video in result_videos
-        ),
-        breakout_count=(
-            analysis.results.breakout_count
-        ),
-        exceptional_count=(
-            analysis.results
-            .exceptional_performance_count
-        ),
-        unique_channel_count=(
-            unique_channel_count
-        ),
+        views_per_day=(video.metrics.views_per_day for video in result_videos),
+        breakout_count=(analysis.results.breakout_count),
+        exceptional_count=(analysis.results.exceptional_performance_count),
+        unique_channel_count=(unique_channel_count),
     )
 
     confidence = calculate_confidence_score(
         query_count=len(request.queries),
-        videos_considered=(
-            analysis.results.considered_count
-        ),
-        videos_returned=(
-            analysis.results.total_count
-        ),
-        videos_with_subscriber_data=(
-            videos_with_subscriber_data
-        ),
+        videos_considered=(analysis.results.considered_count),
+        videos_returned=(analysis.results.total_count),
+        videos_with_subscriber_data=(videos_with_subscriber_data),
     )
 
     return AnalysisResponse(
         niche=request.niche,
         queries=request.queries,
-        videos_considered=(
-            analysis.results.considered_count
-        ),
-        videos_returned=(
-            analysis.results.total_count
-        ),
-        breakout_count=(
-            analysis.results.breakout_count
-        ),
-        exceptional_performance_count=(
-            analysis.results
-            .exceptional_performance_count
-        ),
+        videos_considered=(analysis.results.considered_count),
+        videos_returned=(analysis.results.total_count),
+        breakout_count=(analysis.results.breakout_count),
+        exceptional_performance_count=(analysis.results.exceptional_performance_count),
         virality_score=ViralityScoreResponse(
             score=virality.score,
             label=virality.label,
             breakdown=ViralityBreakdownResponse(
-                breakout_points=(
-                    virality.breakout_points
-                ),
-                velocity_points=(
-                    virality.velocity_points
-                ),
-                exceptional_points=(
-                    virality.exceptional_points
-                ),
-                diversity_points=(
-                    virality.diversity_points
-                ),
-                median_views_per_day=(
-                    virality.median_views_per_day
-                ),
-                unique_channel_count=(
-                    virality.unique_channel_count
-                ),
+                breakout_points=(virality.breakout_points),
+                velocity_points=(virality.velocity_points),
+                exceptional_points=(virality.exceptional_points),
+                diversity_points=(virality.diversity_points),
+                median_views_per_day=(virality.median_views_per_day),
+                unique_channel_count=(virality.unique_channel_count),
             ),
         ),
         confidence_score=ConfidenceScoreResponse(
@@ -547,16 +458,14 @@ def generate_search_queries(
 
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                "Could not generate search queries "
-                "right now."
-            ),
+            detail=("Could not generate search queries right now."),
         ) from error
 
     return QueryExpansionResponse(
         niche=expansion.niche,
         queries=list(expansion.queries),
     )
+
 
 @app.post(
     "/api/query-relevance",
@@ -584,10 +493,7 @@ def review_query_relevance(
     ) as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                "Could not verify query relevance "
-                "right now."
-            ),
+            detail=("Could not verify query relevance right now."),
         ) from error
 
     warnings = [
@@ -622,21 +528,13 @@ def analyze_niche(
         analysis = analysis_runner(request)
     except SQLAlchemyError as error:
         raise HTTPException(
-            status_code=(
-                status.HTTP_500_INTERNAL_SERVER_ERROR
-            ),
-            detail=(
-                "Could not access the NicheRadar "
-                "analysis database."
-            ),
+            status_code=(status.HTTP_500_INTERNAL_SERVER_ERROR),
+            detail=("Could not access the NicheRadar analysis database."),
         ) from error
     except RuntimeError as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                "Could not complete the YouTube "
-                "analysis right now."
-            ),
+            detail=("Could not complete the YouTube analysis right now."),
         ) from error
 
     return build_analysis_response(
@@ -649,3 +547,16 @@ app.frontend(
     "/",
     directory=str(FRONTEND_DIRECTORY),
 )
+
+
+@app.get(
+    "/about",
+    include_in_schema=False,
+)
+def serve_about_page() -> FileResponse:
+    """Serve the standalone NicheRadar About page."""
+
+    return FileResponse(
+        FRONTEND_DIRECTORY / "about.html",
+        media_type="text/html",
+    )

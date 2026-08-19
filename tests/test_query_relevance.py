@@ -135,25 +135,53 @@ def test_assessment_requires_one_result_per_query() -> None:
         )
 
 
-def test_assessment_rejects_more_than_four_queries() -> None:
-    """The locked niche leaves at most four queries to assess."""
+def test_assessment_accepts_nine_queries() -> None:
+    """Nine non-original queries should be assessable."""
 
     client = Mock(spec=GroqClient)
 
+    queries = [f"Query {index}" for index in range(1, 10)]
+
+    client.generate_json.return_value = {
+        "assessments": [
+            {
+                "index": index,
+                "is_relevant": True,
+                "reason": "Related to the niche.",
+            }
+            for index, _query in enumerate(queries)
+        ]
+    }
+
+    review = assess_query_relevance(
+        client,
+        "Gym",
+        queries,
+    )
+
+    assert len(review.assessments) == 9
+    assert review.warnings == ()
+
+    client.generate_json.assert_called_once()
+
+
+def test_assessment_rejects_more_than_nine_queries() -> None:
+    """The locked niche leaves at most nine queries to assess."""
+
+    client = Mock(spec=GroqClient)
+
+    queries = [f"Query {index}" for index in range(1, 11)]
+
     with pytest.raises(
         ValueError,
-        match="at most 4",
+        match="at most 9",
     ):
         assess_query_relevance(
             client,
             "Gym",
-            [
-                "Query one",
-                "Query two",
-                "Query three",
-                "Query four",
-                "Query five",
-            ],
+            queries,
         )
+
+    client.generate_json.assert_not_called()
 
     client.generate_json.assert_not_called()

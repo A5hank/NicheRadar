@@ -6,6 +6,10 @@ from enum import StrEnum
 from math import isfinite, log10
 from statistics import median
 
+from nicheradar.query_expansion import MAX_QUERY_COUNT
+
+MAX_QUERY_CONFIDENCE_POINTS = 20
+
 
 class ViralityLabel(StrEnum):
     """Human-readable category for a Virality Score."""
@@ -66,9 +70,7 @@ def calculate_breakout_points(
     """Award breakout points using the approved count tiers."""
 
     if breakout_count < 0:
-        raise ValueError(
-            "breakout_count must not be negative"
-        )
+        raise ValueError("breakout_count must not be negative")
 
     if breakout_count <= 1:
         return 0
@@ -90,14 +92,8 @@ def calculate_velocity_points(
 ) -> int:
     """Convert median view velocity into zero to thirty points."""
 
-    if (
-        not isfinite(median_views_per_day)
-        or median_views_per_day < 0
-    ):
-        raise ValueError(
-            "median_views_per_day must be a finite "
-            "non-negative number"
-        )
+    if not isfinite(median_views_per_day) or median_views_per_day < 0:
+        raise ValueError("median_views_per_day must be a finite non-negative number")
 
     if median_views_per_day <= 1_000:
         return 0
@@ -105,10 +101,7 @@ def calculate_velocity_points(
     if median_views_per_day >= 100_000:
         return 30
 
-    velocity_position = (
-        log10(median_views_per_day / 1_000)
-        / log10(100_000 / 1_000)
-    )
+    velocity_position = log10(median_views_per_day / 1_000) / log10(100_000 / 1_000)
 
     return round(velocity_position * 30)
 
@@ -121,26 +114,18 @@ def calculate_exceptional_points(
     """Award up to fifteen points from the exceptional rate."""
 
     if exceptional_count < 0:
-        raise ValueError(
-            "exceptional_count must not be negative"
-        )
+        raise ValueError("exceptional_count must not be negative")
 
     if video_count < 0:
-        raise ValueError(
-            "video_count must not be negative"
-        )
+        raise ValueError("video_count must not be negative")
 
     if exceptional_count > video_count:
-        raise ValueError(
-            "exceptional_count cannot exceed video_count"
-        )
+        raise ValueError("exceptional_count cannot exceed video_count")
 
     if video_count == 0:
         return 0
 
-    exceptional_rate = (
-        exceptional_count / video_count
-    )
+    exceptional_rate = exceptional_count / video_count
 
     normalized_rate = min(
         exceptional_rate / 0.10,
@@ -156,9 +141,7 @@ def calculate_diversity_points(
     """Award creator-diversity points using channel tiers."""
 
     if unique_channel_count < 0:
-        raise ValueError(
-            "unique_channel_count must not be negative"
-        )
+        raise ValueError("unique_channel_count must not be negative")
 
     if unique_channel_count < 10:
         return 0
@@ -181,9 +164,7 @@ def determine_virality_label(
     """Convert a numerical Virality Score into its label."""
 
     if not 0 <= score <= 100:
-        raise ValueError(
-            "Virality Score must be between 0 and 100"
-        )
+        raise ValueError("Virality Score must be between 0 and 100")
 
     if score <= 24:
         return ViralityLabel.LOW_ACTIVITY
@@ -209,71 +190,43 @@ def calculate_virality_score(
 ) -> ViralityScore:
     """Calculate a complete Virality Score from ranked videos."""
 
-    velocity_values = tuple(
-        float(value)
-        for value in views_per_day
-    )
+    velocity_values = tuple(float(value) for value in views_per_day)
 
     for value in velocity_values:
         if not isfinite(value) or value < 0:
-            raise ValueError(
-                "views_per_day values must be finite "
-                "and non-negative"
-            )
+            raise ValueError("views_per_day values must be finite and non-negative")
 
     video_count = len(velocity_values)
 
     if breakout_count < 0:
-        raise ValueError(
-            "breakout_count must not be negative"
-        )
+        raise ValueError("breakout_count must not be negative")
 
     if exceptional_count < 0:
-        raise ValueError(
-            "exceptional_count must not be negative"
-        )
+        raise ValueError("exceptional_count must not be negative")
 
     if breakout_count + exceptional_count > video_count:
-        raise ValueError(
-            "highlight counts cannot exceed video_count"
-        )
+        raise ValueError("highlight counts cannot exceed video_count")
 
     if not 0 <= unique_channel_count <= video_count:
-        raise ValueError(
-            "unique_channel_count must be between "
-            "zero and video_count"
-        )
+        raise ValueError("unique_channel_count must be between zero and video_count")
 
     if video_count == 0:
         median_velocity = 0.0
     else:
-        median_velocity = float(
-            median(velocity_values)
-        )
+        median_velocity = float(median(velocity_values))
 
-    breakout_points = calculate_breakout_points(
-        breakout_count
-    )
+    breakout_points = calculate_breakout_points(breakout_count)
 
-    velocity_points = calculate_velocity_points(
-        median_velocity
-    )
+    velocity_points = calculate_velocity_points(median_velocity)
 
     exceptional_points = calculate_exceptional_points(
         exceptional_count=exceptional_count,
         video_count=video_count,
     )
 
-    diversity_points = calculate_diversity_points(
-        unique_channel_count
-    )
+    diversity_points = calculate_diversity_points(unique_channel_count)
 
-    score = (
-        breakout_points
-        + velocity_points
-        + exceptional_points
-        + diversity_points
-    )
+    score = breakout_points + velocity_points + exceptional_points + diversity_points
 
     return ViralityScore(
         score=score,
@@ -296,9 +249,7 @@ def calculate_candidate_points(
     """Award confidence points from the candidate-pool size."""
 
     if videos_considered < 0:
-        raise ValueError(
-            "videos_considered must not be negative"
-        )
+        raise ValueError("videos_considered must not be negative")
 
     if videos_considered == 0:
         return 0
@@ -324,9 +275,7 @@ def calculate_result_points(
     """Award confidence points from the ranked result count."""
 
     if videos_returned < 0:
-        raise ValueError(
-            "videos_returned must not be negative"
-        )
+        raise ValueError("videos_returned must not be negative")
 
     if videos_returned == 0:
         return 0
@@ -354,32 +303,20 @@ def calculate_subscriber_points(
     """Award confidence points from subscriber-data completeness."""
 
     if videos_with_subscriber_data < 0:
-        raise ValueError(
-            "videos_with_subscriber_data must not be negative"
-        )
+        raise ValueError("videos_with_subscriber_data must not be negative")
 
     if videos_returned < 0:
-        raise ValueError(
-            "videos_returned must not be negative"
-        )
+        raise ValueError("videos_returned must not be negative")
 
     if videos_with_subscriber_data > videos_returned:
-        raise ValueError(
-            "videos_with_subscriber_data cannot exceed "
-            "videos_returned"
-        )
+        raise ValueError("videos_with_subscriber_data cannot exceed videos_returned")
 
     if videos_returned == 0:
         return 0, 0.0
 
-    completeness_ratio = (
-        videos_with_subscriber_data
-        / videos_returned
-    )
+    completeness_ratio = videos_with_subscriber_data / videos_returned
 
-    completeness_percent = (
-        completeness_ratio * 100
-    )
+    completeness_percent = completeness_ratio * 100
 
     if videos_with_subscriber_data == 0:
         points = 0
@@ -403,9 +340,7 @@ def determine_confidence_label(
     """Convert a numerical Confidence Score into its label."""
 
     if not 0 <= score <= 100:
-        raise ValueError(
-            "Confidence Score must be between 0 and 100"
-        )
+        raise ValueError("Confidence Score must be between 0 and 100")
 
     if score <= 39:
         return ConfidenceLabel.LOW
@@ -428,34 +363,21 @@ def calculate_confidence_score(
 ) -> ConfidenceScore:
     """Calculate how reliable the Virality Score is."""
 
-    if not 1 <= query_count <= 5:
-        raise ValueError(
-            "query_count must be between 1 and 5"
-        )
+    if not 1 <= query_count <= MAX_QUERY_COUNT:
+        raise ValueError(f"query_count must be between 1 and {MAX_QUERY_COUNT}")
 
     if videos_considered < 0:
-        raise ValueError(
-            "videos_considered must not be negative"
-        )
+        raise ValueError("videos_considered must not be negative")
 
     if videos_returned < 0:
-        raise ValueError(
-            "videos_returned must not be negative"
-        )
+        raise ValueError("videos_returned must not be negative")
 
     if videos_considered < videos_returned:
-        raise ValueError(
-            "videos_considered cannot be smaller "
-            "than videos_returned"
-        )
+        raise ValueError("videos_considered cannot be smaller than videos_returned")
 
-    subscriber_points, completeness_percent = (
-        calculate_subscriber_points(
-            videos_with_subscriber_data=(
-                videos_with_subscriber_data
-            ),
-            videos_returned=videos_returned,
-        )
+    subscriber_points, completeness_percent = calculate_subscriber_points(
+        videos_with_subscriber_data=(videos_with_subscriber_data),
+        videos_returned=videos_returned,
     )
 
     if videos_returned == 0:
@@ -473,22 +395,13 @@ def calculate_confidence_score(
             subscriber_completeness_percent=0.0,
         )
 
-    query_points = query_count * 4
+    query_points = round(query_count / MAX_QUERY_COUNT * MAX_QUERY_CONFIDENCE_POINTS)
 
-    candidate_points = calculate_candidate_points(
-        videos_considered
-    )
+    candidate_points = calculate_candidate_points(videos_considered)
 
-    result_points = calculate_result_points(
-        videos_returned
-    )
+    result_points = calculate_result_points(videos_returned)
 
-    score = (
-        query_points
-        + candidate_points
-        + result_points
-        + subscriber_points
-    )
+    score = query_points + candidate_points + result_points + subscriber_points
 
     return ConfidenceScore(
         score=score,
@@ -500,10 +413,6 @@ def calculate_confidence_score(
         query_count=query_count,
         videos_considered=videos_considered,
         videos_returned=videos_returned,
-        videos_with_subscriber_data=(
-            videos_with_subscriber_data
-        ),
-        subscriber_completeness_percent=(
-            completeness_percent
-        ),
+        videos_with_subscriber_data=(videos_with_subscriber_data),
+        subscriber_completeness_percent=(completeness_percent),
     )

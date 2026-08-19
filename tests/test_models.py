@@ -85,9 +85,7 @@ def test_models_store_data_and_relationships() -> None:
         video = make_video(
             channel_id=channel.channel_id,
         )
-        video.thumbnail_url = (
-            "https://images.example/video-123-medium.jpg"
-        )
+        video.thumbnail_url = "https://images.example/video-123-medium.jpg"
         snapshot = Snapshot(
             niche="AI productivity",
             snapshot_date=date(2026, 8, 12),
@@ -116,9 +114,7 @@ def test_models_store_data_and_relationships() -> None:
 
             assert stored_video is not None
             assert stored_video.views == 800_000
-            assert stored_video.thumbnail_url == (
-                "https://images.example/video-123-medium.jpg"
-            )
+            assert stored_video.thumbnail_url == ("https://images.example/video-123-medium.jpg")
             assert stored_video.channel.channel_name == "Practical AI"
             assert stored_video in channel.videos
     finally:

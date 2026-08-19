@@ -74,31 +74,41 @@ def test_approval_accepts_original_niche_only() -> None:
 
     approved_queries = validate_approved_queries(
         niche="  Marvel  ",
-        queries=(
-            " Marvel ",
-        ),
+        queries=(" Marvel ",),
     )
 
     assert approved_queries == ("Marvel",)
 
 
-def test_approval_rejects_more_than_five_queries() -> None:
-    """The review must never approve more than five queries."""
+def test_approval_accepts_ten_queries() -> None:
+    """The review should approve the maximum of ten queries."""
+
+    queries = ["Marvel"]
+
+    queries.extend(f"Marvel angle {index}" for index in range(1, 10))
+
+    approved_queries = validate_approved_queries(
+        niche="Marvel",
+        queries=queries,
+    )
+
+    assert approved_queries == tuple(queries)
+
+
+def test_approval_rejects_more_than_ten_queries() -> None:
+    """The review must never approve more than ten queries."""
+
+    queries = ["Marvel"]
+
+    queries.extend(f"Marvel angle {index}" for index in range(1, 11))
 
     with pytest.raises(
         QueryReviewError,
-        match="between 1 and 5",
+        match="between 1 and 10",
     ):
         validate_approved_queries(
             niche="Marvel",
-            queries=(
-                "Marvel",
-                "Marvel news",
-                "MCU theories",
-                "Marvel facts",
-                "Marvel trailers",
-                "Marvel interviews",
-            ),
+            queries=queries,
         )
 
 

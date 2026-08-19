@@ -1,9 +1,8 @@
 """End-to-end NicheRadar analysis orchestration."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-
-from collections.abc import Sequence
 
 from sqlalchemy.orm import Session
 

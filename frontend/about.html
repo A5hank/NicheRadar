@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <meta
+      name="description"
+      content="Learn about NicheRadar and its developer, Ashank Kumar Singh."
+    />
+
+    <title>About NicheRadar</title>
+
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/assets/nicheradar-mark.svg"
+    />
+
+    <script>
+      (() => {
+        const storageKey = "nicheradar-theme";
+        const systemTheme = window.matchMedia(
+          "(prefers-color-scheme: dark)",
+        ).matches
+          ? "dark"
+          : "light";
+
+        try {
+          const savedTheme = window.localStorage.getItem(storageKey);
+
+          document.documentElement.dataset.theme =
+            savedTheme === "light" || savedTheme === "dark"
+              ? savedTheme
+              : systemTheme;
+        } catch {
+          document.documentElement.dataset.theme = systemTheme;
+        }
+      })();
+    </script>
+
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/about.css" />
+    <script src="/about.js" defer></script>
+  </head>
+
+  <body class="about-page">
+    <button
+      id="theme-toggle"
+      class="theme-toggle"
+      type="button"
+      aria-label="Switch to dark mode"
+      aria-pressed="false"
+      title="Switch to dark mode"
+    >
+      <svg
+        class="theme-icon theme-icon-sun"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="4"></circle>
+        <path
+          d="
+            M12 2v2
+            M12 20v2
+            M4.93 4.93l1.42 1.42
+            M17.66 17.66l1.41 1.41
+            M2 12h2
+            M20 12h2
+            M4.93 19.07l1.42-1.41
+            M17.66 6.34l1.41-1.41
+          "
+        ></path>
+      </svg>
+
+      <svg
+        class="theme-icon theme-icon-moon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path
+          d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
+        ></path>
+      </svg>
+    </button>
+
+    <header class="about-header">
+      <div class="about-header-inner">
+        <a class="brand" href="/" aria-label="NicheRadar home">
+          <img
+            class="radar-mark"
+            src="/assets/nicheradar-mark.svg"
+            alt=""
+            width="32"
+            height="32"
+          />
+          <span>NicheRadar</span>
+        </a>
+
+        <a class="about-return-link" href="/">
+          <span aria-hidden="true">&larr;</span>
+          Back to analysis
+        </a>
+      </div>
+    </header>
+
+    <main class="about-main">
+      <section class="about-hero" aria-labelledby="about-title">
+        <p class="eyebrow">Behind the radar</p>
+
+        <h1 id="about-title">
+          Find the signal before you create.
+        </h1>
+
+        <p class="about-hero-copy">
+          NicheRadar turns public YouTube Shorts metadata into a
+          focused picture of what is gaining traction, which creators
+          are outperforming their size, and where an opportunity may
+          be emerging.
+        </p>
+      </section>
+
+      <div
+        class="about-tabs"
+        role="tablist"
+        aria-label="About page sections"
+      >
+        <button
+          id="project-tab"
+          class="about-tab active"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="project-panel"
+          data-about-tab="project"
+        >
+          About NicheRadar
+        </button>
+
+        <button
+          id="developer-tab"
+          class="about-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="developer-panel"
+          data-about-tab="developer"
+        >
+          About the Developer
+        </button>
+      </div>
+
+      <section
+        id="project-panel"
+        class="about-panel"
+        role="tabpanel"
+        aria-labelledby="project-tab"
+        data-about-panel="project"
+        tabindex="0"
+      >
+        <div class="about-section-heading">
+          <p class="eyebrow">The project</p>
+          <h2>YouTube Shorts research without the guesswork.</h2>
+          <p>
+            NicheRadar combines focused searches, real performance
+            statistics and transparent analytical signals into one
+            ranked report.
+          </p>
+        </div>
+
+        <div class="about-feature-grid">
+          <article class="about-feature-card">
+            <span class="about-feature-number" aria-hidden="true">
+              01
+            </span>
+            <h3>Shape the search</h3>
+            <p>
+              A niche is expanded into focused search angles that the
+              user can review, remove or replace before analysis.
+            </p>
+          </article>
+
+          <article class="about-feature-card">
+            <span class="about-feature-number" aria-hidden="true">
+              02
+            </span>
+            <h3>Compare real performance</h3>
+            <p>
+              Public views, upload age and channel size are converted
+              into comparable signals such as views per day and
+              subscriber multiplier.
+            </p>
+          </article>
+
+          <article class="about-feature-card">
+            <span class="about-feature-number" aria-hidden="true">
+              03
+            </span>
+            <h3>Spot unusual traction</h3>
+            <p>
+              Breakout and exceptional-performance highlights reveal
+              videos performing unusually well for their channels.
+            </p>
+          </article>
+        </div>
+
+        <div class="about-detail-grid">
+          <article class="about-detail-card">
+            <p class="eyebrow">What it provides</p>
+            <h3>A focused niche snapshot</h3>
+            <ul class="about-list">
+              <li>Up to 50 candidates ranked by views per day</li>
+              <li>Breakout and exceptional-performance highlights</li>
+              <li>Niche virality and confidence scores</li>
+              <li>Channel, thumbnail and performance metadata</li>
+            </ul>
+          </article>
+
+          <article class="about-detail-card">
+            <p class="eyebrow">Built with</p>
+            <h3>An end-to-end product stack</h3>
+            <div class="technology-list" aria-label="Technologies used">
+              <span>Python</span>
+              <span>FastAPI</span>
+              <span>SQLAlchemy</span>
+              <span>SQLite</span>
+              <span>Groq</span>
+              <span>YouTube Data API</span>
+              <span>HTML</span>
+              <span>CSS</span>
+              <span>JavaScript</span>
+              <span>Podman</span>
+            </div>
+          </article>
+        </div>
+
+        <aside class="about-note">
+          <div>
+            <p class="eyebrow">Scope</p>
+            <h3>Metadata intelligence, not a guarantee of success.</h3>
+          </div>
+          <p>
+            NicheRadar analyses public metadata rather than video
+            content. Its scores are research signals designed to support
+            creator decisions, not predictions of future performance.
+            NicheRadar is not affiliated with YouTube.
+          </p>
+        </aside>
+      </section>
+
+      <section
+        id="developer-panel"
+        class="about-panel"
+        role="tabpanel"
+        aria-labelledby="developer-tab"
+        data-about-panel="developer"
+        tabindex="0"
+        hidden
+      >
+        <div class="developer-profile">
+          <div class="developer-monogram" aria-hidden="true">
+            AS
+          </div>
+
+          <div class="developer-introduction">
+            <p class="eyebrow">The developer</p>
+            <h2>Ashank Kumar Singh</h2>
+            <p class="developer-role">
+              Computer Science student and AI engineering builder
+            </p>
+
+            <p>
+              I am a third-year Computer Science student interested in
+              AI engineering, backend systems and building practical,
+              data-driven products.
+            </p>
+
+            <p>
+              I built NicheRadar as an end-to-end engineering project:
+              from API integration, database design and performance
+              analytics to automated testing, frontend development and
+              containerized deployment.
+            </p>
+
+            <div class="developer-links">
+              <a
+                class="developer-link"
+                href="https://github.com/A5hank"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                GitHub
+                <span aria-hidden="true">&nearr;</span>
+              </a>
+
+              <a
+                class="developer-link"
+                href="https://www.linkedin.com/in/ashank-kumar-singh/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                LinkedIn
+                <span aria-hidden="true">&nearr;</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="developer-interests">
+          <p class="eyebrow">Currently exploring</p>
+
+          <div class="technology-list">
+            <span>AI engineering</span>
+            <span>RAG systems</span>
+            <span>Agentic AI</span>
+            <span>Backend engineering</span>
+            <span>Applied machine learning</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="about-footer">
+      <a class="brand" href="/" aria-label="NicheRadar home">
+        <img
+          class="radar-mark"
+          src="/assets/nicheradar-mark.svg"
+          alt=""
+          width="32"
+          height="32"
+        />
+        <span>NicheRadar</span>
+      </a>
+
+      <p>Built by Ashank Kumar Singh.</p>
+    </footer>
+  </body>
+</html>

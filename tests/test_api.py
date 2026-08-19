@@ -51,12 +51,8 @@ def client(
     def override_analysis_runner() -> Mock:
         return analysis_runner
 
-    app.dependency_overrides[get_groq_client] = (
-        override_groq_client
-    )
-    app.dependency_overrides[get_analysis_runner] = (
-        override_analysis_runner
-    )
+    app.dependency_overrides[get_groq_client] = override_groq_client
+    app.dependency_overrides[get_analysis_runner] = override_analysis_runner
 
     try:
         with TestClient(app) as test_client:
@@ -87,6 +83,7 @@ def test_frontend_homepage_is_served(
 
     assert response.status_code == 200
     assert "NicheRadar" in response.text
+    assert 'href="/about"' in response.text
 
 
 def test_frontend_assets_are_served(
@@ -96,9 +93,37 @@ def test_frontend_assets_are_served(
 
     css_response = client.get("/styles.css")
     javascript_response = client.get("/app.js")
+    logo_response = client.get("/assets/nicheradar-mark.svg")
+    about_css_response = client.get("/about.css")
+    about_javascript_response = client.get("/about.js")
 
     assert css_response.status_code == 200
     assert javascript_response.status_code == 200
+    assert logo_response.status_code == 200
+    assert about_css_response.status_code == 200
+    assert about_javascript_response.status_code == 200
+
+    assert logo_response.headers["content-type"].startswith("image/svg+xml")
+    assert b"<svg" in logo_response.content
+
+
+def test_about_page_is_served(
+    client: TestClient,
+) -> None:
+    """The browser should receive the dedicated About page."""
+
+    response = client.get("/about")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+
+    assert "<title>About NicheRadar</title>" in response.text
+    assert 'href="/about.css"' in response.text
+    assert 'src="/about.js"' in response.text
+
+    assert "https://github.com/A5hank" in response.text
+    assert "https://www.linkedin.com/in/ashank-kumar-singh/" in response.text
+
 
 def test_analysis_request_accepts_original_niche_only() -> None:
     """A single locked niche query should be valid."""
@@ -129,20 +154,32 @@ def test_analysis_request_rejects_missing_original_niche() -> None:
         )
 
 
-def test_analysis_request_rejects_more_than_five_queries() -> None:
-    """The API must reject a sixth query."""
+def test_analysis_request_accepts_ten_queries() -> None:
+    """The API should accept the maximum of ten queries."""
+
+    queries = ["Marvel"]
+
+    queries.extend(f"Marvel angle {index}" for index in range(1, 10))
+
+    request = AnalysisRequest(
+        niche="Marvel",
+        queries=queries,
+    )
+
+    assert request.queries == queries
+
+
+def test_analysis_request_rejects_more_than_ten_queries() -> None:
+    """The API must reject an eleventh query."""
+
+    queries = ["Marvel"]
+
+    queries.extend(f"Marvel angle {index}" for index in range(1, 11))
 
     with pytest.raises(ValueError):
         AnalysisRequest(
             niche="Marvel",
-            queries=[
-                "Marvel",
-                "Marvel news",
-                "MCU theories",
-                "Marvel facts",
-                "Marvel trailers",
-                "Marvel interviews",
-            ],
+            queries=queries,
         )
 
 
@@ -158,6 +195,11 @@ def test_query_endpoint_returns_expanded_queries(
             "Marvel casting news",
             "Avengers analysis",
             "Marvel character stories",
+            "Marvel comics explained",
+            "Marvel movie breakdowns",
+            "Marvel villain origins",
+            "Marvel fan theories",
+            "Marvel timeline",
         ]
     }
 
@@ -177,6 +219,11 @@ def test_query_endpoint_returns_expanded_queries(
             "Marvel casting news",
             "Avengers analysis",
             "Marvel character stories",
+            "Marvel comics explained",
+            "Marvel movie breakdowns",
+            "Marvel villain origins",
+            "Marvel fan theories",
+            "Marvel timeline",
         ],
     }
     groq_client.generate_json.assert_called_once()
@@ -205,9 +252,7 @@ def test_query_endpoint_handles_groq_failure(
 ) -> None:
     """A Groq failure should become an HTTP response."""
 
-    groq_client.generate_json.side_effect = GroqAPIError(
-        "Could not connect to the Groq API."
-    )
+    groq_client.generate_json.side_effect = GroqAPIError("Could not connect to the Groq API.")
 
     response = client.post(
         "/api/queries",
@@ -218,10 +263,9 @@ def test_query_endpoint_handles_groq_failure(
 
     assert response.status_code == 502
     assert response.json() == {
-        "detail": (
-            "Could not generate search queries right now."
-        ),
+        "detail": ("Could not generate search queries right now."),
     }
+
 
 def test_query_relevance_endpoint_returns_warnings(
     client: TestClient,
@@ -234,18 +278,12 @@ def test_query_relevance_endpoint_returns_warnings(
             {
                 "index": 0,
                 "is_relevant": True,
-                "reason": (
-                    "Home workouts are directly related "
-                    "to gym content."
-                ),
+                "reason": ("Home workouts are directly related to gym content."),
             },
             {
                 "index": 1,
                 "is_relevant": False,
-                "reason": (
-                    "Minecraft survival is not related "
-                    "to gym content."
-                ),
+                "reason": ("Minecraft survival is not related to gym content."),
             },
         ]
     }
@@ -267,15 +305,13 @@ def test_query_relevance_endpoint_returns_warnings(
         "warnings": [
             {
                 "query": "Minecraft survival",
-                "reason": (
-                    "Minecraft survival is not related "
-                    "to gym content."
-                ),
+                "reason": ("Minecraft survival is not related to gym content."),
             }
         ],
     }
 
     groq_client.generate_json.assert_called_once()
+
 
 def test_query_relevance_endpoint_accepts_related_queries(
     client: TestClient,
@@ -288,10 +324,7 @@ def test_query_relevance_endpoint_accepts_related_queries(
             {
                 "index": 0,
                 "is_relevant": True,
-                "reason": (
-                    "Workout motivation is a useful "
-                    "gym content angle."
-                ),
+                "reason": ("Workout motivation is a useful gym content angle."),
             }
         ]
     }
@@ -314,28 +347,24 @@ def test_query_relevance_endpoint_accepts_related_queries(
 
     groq_client.generate_json.assert_called_once()
 
-def test_query_relevance_endpoint_rejects_more_than_four_queries(
+
+def test_query_relevance_endpoint_rejects_more_than_nine_queries(
     client: TestClient,
     groq_client: Mock,
 ) -> None:
-    """At most four non-original queries can be checked."""
+    """The API should reject ten non-original queries."""
 
     response = client.post(
         "/api/query-relevance",
         json={
             "niche": "Gym",
-            "queries": [
-                "Query one",
-                "Query two",
-                "Query three",
-                "Query four",
-                "Query five",
-            ],
+            "queries": [f"Query {index}" for index in range(1, 11)],
         },
     )
 
     assert response.status_code == 422
     groq_client.generate_json.assert_not_called()
+
 
 def test_query_relevance_endpoint_handles_invalid_groq_data(
     client: TestClient,
@@ -359,10 +388,7 @@ def test_query_relevance_endpoint_handles_invalid_groq_data(
 
     assert response.status_code == 502
     assert response.json() == {
-        "detail": (
-            "Could not verify query relevance "
-            "right now."
-        ),
+        "detail": ("Could not verify query relevance right now."),
     }
 
 
@@ -377,9 +403,7 @@ def test_analysis_endpoint_returns_dashboard_data(
         channel_id="channel-123",
         title="Marvel Theory Explained",
         url="https://www.youtube.com/watch?v=video-123",
-        thumbnail_url=(
-            "https://images.example/video-123-medium.jpg"
-        ),
+        thumbnail_url=("https://images.example/video-123-medium.jpg"),
         channel_name="Marvel Analyst",
         upload_date=datetime(
             2026,
@@ -418,6 +442,11 @@ def test_analysis_endpoint_returns_dashboard_data(
                 "Marvel casting news",
                 "Avengers analysis",
                 "Marvel character stories",
+                "Marvel movie breakdowns",
+                "Marvel fan theories",
+                "Marvel villains",
+                "Marvel Easter eggs",
+                "Marvel comics explained",
             ],
         },
     )
@@ -430,30 +459,17 @@ def test_analysis_endpoint_returns_dashboard_data(
     assert payload["videos_considered"] == 76
     assert payload["videos_returned"] == 1
     assert payload["breakout_count"] == 1
-    assert (
-        payload["exceptional_performance_count"]
-        == 0
-    )
+    assert payload["exceptional_performance_count"] == 0
 
-    assert payload["videos"][0]["video_id"] == (
-        "video-123"
-    )
-    assert payload["videos"][0]["thumbnail_url"] == (
-        "https://images.example/video-123-medium.jpg"
-    )
+    assert payload["videos"][0]["video_id"] == ("video-123")
+    assert payload["videos"][0]["thumbnail_url"] == ("https://images.example/video-123-medium.jpg")
     assert payload["videos"][0]["views"] == 250_000
-    assert payload["videos"][0]["views_per_day"] == (
-        125_000.0
-    )
-    assert payload["videos"][0]["performance"] == (
-        "breakout"
-    )
+    assert payload["videos"][0]["views_per_day"] == (125_000.0)
+    assert payload["videos"][0]["performance"] == ("breakout")
 
     analysis_runner.assert_called_once()
 
-    submitted_request = (
-        analysis_runner.call_args.args[0]
-    )
+    submitted_request = analysis_runner.call_args.args[0]
 
     assert submitted_request.niche == "Marvel"
     assert submitted_request.queries == [
@@ -462,6 +478,11 @@ def test_analysis_endpoint_returns_dashboard_data(
         "Marvel casting news",
         "Avengers analysis",
         "Marvel character stories",
+        "Marvel movie breakdowns",
+        "Marvel fan theories",
+        "Marvel villains",
+        "Marvel Easter eggs",
+        "Marvel comics explained",
     ]
 
     assert payload["virality_score"] == {
@@ -487,7 +508,7 @@ def test_analysis_endpoint_rejects_duplicate_queries(
     client: TestClient,
     analysis_runner: Mock,
 ) -> None:
-    """The endpoint should require five unique queries."""
+    """Every submitted query should be unique."""
 
     response = client.post(
         "/api/analyses",
@@ -513,9 +534,7 @@ def test_analysis_endpoint_handles_runner_failure(
 ) -> None:
     """A pipeline failure should become a controlled response."""
 
-    analysis_runner.side_effect = RuntimeError(
-        "YouTube request failed."
-    )
+    analysis_runner.side_effect = RuntimeError("YouTube request failed.")
 
     response = client.post(
         "/api/analyses",
@@ -533,8 +552,5 @@ def test_analysis_endpoint_handles_runner_failure(
 
     assert response.status_code == 502
     assert response.json() == {
-        "detail": (
-            "Could not complete the YouTube "
-            "analysis right now."
-        ),
+        "detail": ("Could not complete the YouTube analysis right now."),
     }

@@ -41,6 +41,7 @@ def test_rfc3339_rejects_naive_datetime() -> None:
     ):
         format_rfc3339_utc(value)
 
+
 def test_thumbnail_selector_prefers_medium_size() -> None:
     """Medium thumbnails should be preferred for dashboard cards."""
 
@@ -270,22 +271,13 @@ def test_fetches_video_and_channel_details() -> None:
                                 ],
                                 "thumbnails": {
                                     "default": {
-                                        "url": (
-                                            "https://images.example/"
-                                            "video-123-default.jpg"
-                                        ),
+                                        "url": ("https://images.example/video-123-default.jpg"),
                                     },
                                     "medium": {
-                                        "url": (
-                                            "https://images.example/"
-                                            "video-123-medium.jpg"
-                                        ),
+                                        "url": ("https://images.example/video-123-medium.jpg"),
                                     },
                                     "high": {
-                                        "url": (
-                                            "https://images.example/"
-                                            "video-123-high.jpg"
-                                        ),
+                                        "url": ("https://images.example/video-123-high.jpg"),
                                     },
                                 },
                             },
@@ -345,9 +337,7 @@ def test_fetches_video_and_channel_details() -> None:
     assert video.like_count == 42_000
     assert video.comment_count == 1_200
     assert video.tags == ("AI", "automation")
-    assert video.thumbnail_url == (
-        "https://images.example/video-123-medium.jpg"
-    )
+    assert video.thumbnail_url == ("https://images.example/video-123-medium.jpg")
     assert video.is_short_candidate is True
 
     assert channel.channel_title == "Practical AI"

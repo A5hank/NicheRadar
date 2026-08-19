@@ -8,19 +8,17 @@ from nicheradar.database import (
     create_database_schema,
     create_session_factory,
 )
+from nicheradar.groq_client import GroqClient
 from nicheradar.pipeline import (
     DEFAULT_SEARCH_LIMIT,
     NicheAnalysis,
     run_niche_analysis,
 )
-
-from nicheradar.groq_client import GroqClient
 from nicheradar.query_expansion import (
     DEFAULT_QUERY_COUNT,
     expand_niche_queries,
 )
 from nicheradar.query_review import review_queries_interactively
-
 from nicheradar.ranking import ScoredVideo
 from nicheradar.results import DEFAULT_RESULT_LIMIT
 from nicheradar.youtube import YouTubeClient
@@ -206,9 +204,7 @@ def main() -> None:
         parser.error("YOUTUBE_API_KEY is missing. Add it to your .env file.")
 
     if not settings.groq_api_key:
-        raise SystemExit(
-            "GROQ_API_KEY is missing. Add it to your .env file."
-        )
+        raise SystemExit("GROQ_API_KEY is missing. Add it to your .env file.")
 
     with GroqClient(settings.groq_api_key) as groq_client:
         expansion = expand_niche_queries(

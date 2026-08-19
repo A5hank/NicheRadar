@@ -92,6 +92,7 @@ def test_generate_json_raises_safe_api_error() -> None:
                 user_prompt="Expand Marvel.",
             )
 
+
 def test_generate_json_retries_schema_generation_failure() -> None:
     """A Groq schema-generation failure should use JSON Object Mode once."""
 
@@ -138,15 +139,10 @@ def test_generate_json_retries_schema_generation_failure() -> None:
                 400,
                 json={
                     "error": {
-                        "message": (
-                            "Failed to generate JSON. "
-                            "Please adjust your prompt."
-                        ),
+                        "message": ("Failed to generate JSON. Please adjust your prompt."),
                         "type": "invalid_request_error",
                         "failed_generation": {
-                            "attempted_output": (
-                                "invalid structured output"
-                            ),
+                            "attempted_output": ("invalid structured output"),
                         },
                     }
                 },

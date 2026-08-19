@@ -5,9 +5,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from nicheradar.groq_client import GroqClient
-from nicheradar.query_expansion import normalize_query
+from nicheradar.query_expansion import (
+    MAX_QUERY_COUNT,
+    normalize_query,
+)
 
-MAX_QUERIES_TO_ASSESS = 4
+MAX_QUERIES_TO_ASSESS = MAX_QUERY_COUNT - 1
 
 QUERY_RELEVANCE_RESPONSE_SCHEMA: dict[str, object] = {
     "type": "object",
@@ -100,11 +103,7 @@ class QueryRelevanceReview:
     def warnings(self) -> tuple[QueryRelevanceAssessment, ...]:
         """Return only queries that appear unrelated."""
 
-        return tuple(
-            assessment
-            for assessment in self.assessments
-            if not assessment.is_relevant
-        )
+        return tuple(assessment for assessment in self.assessments if not assessment.is_relevant)
 
 
 def assess_query_relevance(
@@ -122,24 +121,15 @@ def assess_query_relevance(
     if isinstance(queries, str):
         raise TypeError("queries must be a sequence of strings")
 
-    cleaned_queries = tuple(
-        normalize_query(query)
-        for query in queries
-    )
+    cleaned_queries = tuple(normalize_query(query) for query in queries)
 
     if len(cleaned_queries) > MAX_QUERIES_TO_ASSESS:
-        raise ValueError(
-            "queries must contain at most "
-            f"{MAX_QUERIES_TO_ASSESS} items"
-        )
+        raise ValueError(f"queries must contain at most {MAX_QUERIES_TO_ASSESS} items")
 
     if any(not query for query in cleaned_queries):
         raise ValueError("queries must not contain empty values")
 
-    comparison_keys = [
-        query.casefold()
-        for query in cleaned_queries
-    ]
+    comparison_keys = [query.casefold() for query in cleaned_queries]
 
     if len(set(comparison_keys)) != len(comparison_keys):
         raise ValueError("queries must be unique")
@@ -165,14 +155,10 @@ def assess_query_relevance(
     raw_assessments = response.get("assessments")
 
     if not isinstance(raw_assessments, list):
-        raise QueryRelevanceError(
-            "Groq response did not contain an assessments list."
-        )
+        raise QueryRelevanceError("Groq response did not contain an assessments list.")
 
     if len(raw_assessments) != len(cleaned_queries):
-        raise QueryRelevanceError(
-            "Groq must return one assessment per query."
-        )
+        raise QueryRelevanceError("Groq must return one assessment per query.")
 
     assessments_by_index: dict[
         int,
@@ -181,65 +167,43 @@ def assess_query_relevance(
 
     for raw_assessment in raw_assessments:
         if not isinstance(raw_assessment, dict):
-            raise QueryRelevanceError(
-                "Every assessment must be an object."
-            )
+            raise QueryRelevanceError("Every assessment must be an object.")
 
         index = raw_assessment.get("index")
         is_relevant = raw_assessment.get("is_relevant")
         reason = raw_assessment.get("reason")
 
-        if (
-            not isinstance(index, int)
-            or isinstance(index, bool)
-        ):
-            raise QueryRelevanceError(
-                "Every assessment index must be an integer."
-            )
+        if not isinstance(index, int) or isinstance(index, bool):
+            raise QueryRelevanceError("Every assessment index must be an integer.")
 
         if not 0 <= index < len(cleaned_queries):
-            raise QueryRelevanceError(
-                "Groq returned an out-of-range assessment index."
-            )
+            raise QueryRelevanceError("Groq returned an out-of-range assessment index.")
 
         if index in assessments_by_index:
-            raise QueryRelevanceError(
-                "Groq returned a duplicate assessment index."
-            )
+            raise QueryRelevanceError("Groq returned a duplicate assessment index.")
 
         if not isinstance(is_relevant, bool):
-            raise QueryRelevanceError(
-                "Every relevance decision must be a boolean."
-            )
+            raise QueryRelevanceError("Every relevance decision must be a boolean.")
 
         if not isinstance(reason, str):
-            raise QueryRelevanceError(
-                "Every assessment must contain a reason."
-            )
+            raise QueryRelevanceError("Every assessment must contain a reason.")
 
         cleaned_reason = normalize_query(reason)
 
         if not cleaned_reason:
-            raise QueryRelevanceError(
-                "Assessment reasons must not be empty."
-            )
+            raise QueryRelevanceError("Assessment reasons must not be empty.")
 
-        assessments_by_index[index] = (
-            QueryRelevanceAssessment(
-                query=cleaned_queries[index],
-                is_relevant=is_relevant,
-                reason=cleaned_reason,
-            )
+        assessments_by_index[index] = QueryRelevanceAssessment(
+            query=cleaned_queries[index],
+            is_relevant=is_relevant,
+            reason=cleaned_reason,
         )
 
     if len(assessments_by_index) != len(cleaned_queries):
-        raise QueryRelevanceError(
-            "Groq must assess every supplied query."
-        )
+        raise QueryRelevanceError("Groq must assess every supplied query.")
 
     ordered_assessments = tuple(
-        assessments_by_index[index]
-        for index in range(len(cleaned_queries))
+        assessments_by_index[index] for index in range(len(cleaned_queries))
     )
 
     return QueryRelevanceReview(
