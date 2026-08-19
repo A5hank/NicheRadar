@@ -16,6 +16,7 @@ from fastapi import (
     HTTPException,
     status,
 )
+from fastapi.responses import FileResponse
 from pydantic import (
     BaseModel,
     Field,
@@ -649,3 +650,15 @@ app.frontend(
     "/",
     directory=str(FRONTEND_DIRECTORY),
 )
+
+@app.get(
+    "/about",
+    include_in_schema=False,
+)
+def serve_about_page() -> FileResponse:
+    """Serve the standalone NicheRadar About page."""
+
+    return FileResponse(
+        FRONTEND_DIRECTORY / "about.html",
+        media_type="text/html",
+    )

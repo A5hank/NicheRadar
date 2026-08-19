@@ -87,6 +87,7 @@ def test_frontend_homepage_is_served(
 
     assert response.status_code == 200
     assert "NicheRadar" in response.text
+    assert 'href="/about"' in response.text
 
 
 def test_frontend_assets_are_served(
@@ -99,14 +100,54 @@ def test_frontend_assets_are_served(
     logo_response = client.get(
         "/assets/nicheradar-mark.svg"
     )
+    about_css_response = client.get("/about.css")
+    about_javascript_response = client.get(
+        "/about.js"
+    )
 
     assert css_response.status_code == 200
     assert javascript_response.status_code == 200
     assert logo_response.status_code == 200
-    assert logo_response.headers["content-type"].startswith(
+    assert about_css_response.status_code == 200
+    assert about_javascript_response.status_code == 200
+
+    assert logo_response.headers[
+        "content-type"
+    ].startswith(
         "image/svg+xml"
     )
     assert b"<svg" in logo_response.content
+
+def test_about_page_is_served(
+    client: TestClient,
+) -> None:
+    """The browser should receive the dedicated About page."""
+
+    response = client.get("/about")
+
+    assert response.status_code == 200
+    assert response.headers[
+        "content-type"
+    ].startswith(
+        "text/html"
+    )
+
+    assert (
+        "<title>About NicheRadar</title>"
+        in response.text
+    )
+    assert 'href="/about.css"' in response.text
+    assert 'src="/about.js"' in response.text
+
+    assert (
+        "https://github.com/A5hank"
+        in response.text
+    )
+    assert (
+        "https://www.linkedin.com/"
+        "in/ashank-kumar-singh/"
+        in response.text
+    )
 
 def test_analysis_request_accepts_original_niche_only() -> None:
     """A single locked niche query should be valid."""

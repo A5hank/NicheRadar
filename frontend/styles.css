@@ -647,6 +647,7 @@ button {
 
 .nav-button,
 .about-button {
+  text-decoration: none;
   display: flex;
   padding: 0.8rem 1rem;
   align-items: center;
