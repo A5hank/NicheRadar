@@ -5,10 +5,10 @@
 
 # Local Python environment
 
-.venv
-**pycache**/
-_.py[cod]
-_.egg-info/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
 
 # Test and development caches
 
@@ -25,15 +25,15 @@ dist/
 # Secrets
 
 .env
-.env.\*
+.env.*
 !.env.example
 
 # Local runtime data
 
 data/
-_.db
-_.sqlite
-\*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
 
 # Tests are not needed in the runtime image
 

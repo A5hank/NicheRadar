@@ -1,4 +1,4 @@
-"""Temporary command-line entry point for NicheRadar."""
+"""Status command-line entry point for NicheRadar."""
 
 from nicheradar.config import Settings, get_settings
 
@@ -12,6 +12,6 @@ def build_status_message(settings: Settings | None = None) -> str:
 
 
 def main() -> None:
-    """Start the current version of the application."""
+    """Print a safe application status message."""
 
     print(build_status_message())
