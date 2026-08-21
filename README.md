@@ -39,6 +39,16 @@ Phase 1: Project foundation.
 - Groq API
 - FastAPI with a plan HTML, CSS and JavaScript frontend
 
+## Roadmap (What's Next)
+
+NicheRadar v0.9.0 is currently a "Phase One" milestone. Planned improvements include:
+
+- **Historical Trend Analysis:** Transitioning from daily snapshots to visualizing engagement rate trends over time.
+- **AI Narrative Generation:** Expanding the Groq integration to write a final, comprehensive analytical report based on the collected SQLite data.
+- **Enhanced Data Pipeline:** Adding PostgreSQL support for heavier workloads and caching to reduce redundant YouTube API calls.
+- **UI/UX Polish:** Adding interactive charts for view-velocity and better mobile responsiveness.
+
+
 ## Development setup
 
 ```powershell
