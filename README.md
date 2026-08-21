@@ -1,43 +1,27 @@
 # NicheRadar
 
-NicheRadar is a metadata-only research tool for exploring a YouTube Shorts niche before creating content in it.
+NicheRadar is a metadata-only YouTube Shorts niche intelligence engine.
 
-You enter a niche, such as `AI productivity`. NicheRadar suggests focused search queries, lets you review them, collects recent public YouTube metadata, and returns a ranked set of short-video candidates with transparent performance signals.
+In a time where AI generated youtube channels are exploding into the scene, this will help you find the perfect niche for your AI Automation Channel, which is especially important with the YouTube monetisation changes.
 
-## What the application does today
+Given a niche such as `AI productivity`, it will identify:
 
-- Generates up to ten focused search queries with Groq, including the original niche.
-- Lets the user edit, remove, add, and approve those queries in the browser.
-- Warns when a manually changed query may not be relevant to the original niche.
-- Searches YouTube for recent short-duration video candidates published during the last seven days.
-- Fetches public video and channel metadata, removes duplicates, and stores observations in SQLite by default.
-- Calculates views per day, subscriber multiplier, breakout and exceptional-performance labels, a Virality Score, and a Confidence Score.
-- Shows up to 50 selected candidates in the browser, displayed in views-per-day order.
+- Top-performing Shorts from the last seven days
+- Small creators outperforming their subscriber count
+- Emerging topics within the niche
+- Performance and engagement trends
+- AI-generated explanations based on structured analytics
 
-The final result set is selected by total views first, then ranked for display by views per day. This is deliberate: it keeps the dashboard focused on well-viewed candidates while still making upload-age-adjusted performance easy to compare.
+## Project principle
 
-## Scope and current limitations
+NicheRadar analyzes publicly available metadata only.
 
-NicheRadar analyses public metadata only. It does not download or analyse video frames, audio, or transcripts.
+It does not analyze:
+- Video frames
+- Audio
+- Transcripts
 
-The tool uses a duration-based definition of a Short candidate: a recent YouTube search result that is no longer than 180 seconds. It does not receive a definitive `is_short` flag from YouTube.
-
-The application stores daily niche snapshots and calculates like, comment, and engagement rates internally. It does not yet show historical trends or engagement-rate values in the browser. Groq is used for query suggestions and query-relevance warnings; it does not currently write a final AI narrative explaining the analysis.
-
-NicheRadar is a research aid, not a guarantee that a niche or video will succeed. It is not affiliated with YouTube.
-
-## How it works
-
-```text
-Browser
-  -> Groq: query suggestions and optional relevance check
-  -> YouTube Data API: recent video and channel metadata
-  -> SQLite / SQLAlchemy: persist observations and daily snapshots
-  -> Analytics: score, select, and rank candidates
-  -> Browser dashboard: results and transparent scores
-```
-
-For each approved query, the backend asks YouTube for up to 50 recent results, deduplicates the collected videos, filters them to Short candidates, and retrieves channel metadata. It then calculates the performance signals and returns the final dashboard response.
+This keeps the system cheaper, faster, and focused on performance intelligence.
 
 ## Technology
 
@@ -86,12 +70,9 @@ python -m uvicorn nicheradar.api:app --reload
 ```
 
 Then open:
-
 - Application: <http://127.0.0.1:8000>
 - Interactive API documentation: <http://127.0.0.1:8000/docs>
 - Health check: <http://127.0.0.1:8000/api/health>
-
-The frontend must be served by this FastAPI application for live analysis to work. A standalone `python -m http.server` can display the files, but it does not provide the required `/api/...` endpoints.
 
 ## Run a command-line analysis
 
@@ -116,24 +97,6 @@ python -m nicheradar.analyze "AI productivity" --search-limit 50 --result-limit 
 | `POST` | `/api/query-relevance` | Checks manually changed queries for relevance. |
 | `POST` | `/api/analyses` | Collects metadata and returns a complete niche analysis. |
 
-## Project layout
-
-```text
-frontend/                 Browser interface and About page
-src/nicheradar/           Application, API, collection, storage, and analytics code
-tests/                    Automated unit and API tests
-data/                     Local SQLite database location (ignored except .gitkeep)
-Containerfile             Runtime image definition
-compose.yaml              Local container service definition
-```
-
-## Run checks
-
-```powershell
-pytest -q
-ruff check .
-```
-
 ## Run with containers
 
 Create `.env` as described above, then run:
@@ -143,3 +106,12 @@ podman compose up --build
 ```
 
 The compose file exposes the application only on `127.0.0.1:8000` and persists SQLite data in the `nicheradar-data` volume.
+
+## Roadmap (What's Next)
+
+NicheRadar v0.9.0 is currently a "Phase One" milestone. Planned improvements include:
+
+- **Historical Trend Analysis:** Transitioning from daily snapshots to visualizing engagement rate trends over time.
+- **AI Narrative Generation:** Expanding the Groq integration to write a final, comprehensive analytical report based on the collected SQLite data.
+- **Enhanced Data Pipeline:** Adding PostgreSQL support for heavier workloads and caching to reduce redundant YouTube API calls.
+- **UI/UX Polish:** Adding interactive charts for view-velocity and better mobile responsiveness.
