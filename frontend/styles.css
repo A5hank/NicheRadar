@@ -123,7 +123,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -762,7 +763,7 @@ button {
   padding: 0.56rem 0.8rem;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0.65rem;
   color: var(--query-chip-text);
   font-size: 0.76rem;
 }
@@ -1202,6 +1203,72 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 2rem;
+}
+
+.results-ranking-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.results-ranking-row .eyebrow {
+  margin: 0;
+}
+
+.ranking-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ranking-control::after {
+  position: absolute;
+  top: 50%;
+  right: 0.78rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  pointer-events: none;
+  transform: translateY(-68%) rotate(45deg);
+}
+
+.ranking-control select {
+  min-height: 2.15rem;
+  padding: 0.35rem 2rem 0.35rem 0.72rem;
+  appearance: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  box-shadow: 0 0.45rem 1.25rem var(--floating-shadow);
+  color: var(--ink);
+  color-scheme: inherit;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.2;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ranking-control select:hover {
+  border-color: var(--exceptional);
+  transform: translateY(-1px);
+}
+
+.ranking-control select:focus-visible {
+  outline: 3px solid var(--exceptional);
+  outline-offset: 3px;
+}
+
+.ranking-control option {
+  background: var(--panel);
+  color: var(--ink);
 }
 
 .results-heading-row h2 {

@@ -22,6 +22,7 @@ Do not use `python -m http.server` when testing the complete application. It can
 - Manually changed queries are checked through `POST /api/query-relevance`; the user can return to editing or continue after a warning.
 - Approved queries start the real YouTube collection and analysis through `POST /api/analyses`.
 - The dashboard renders returned videos, breakout and exceptional-performance counts, Virality Score, and Confidence Score.
+- The result-list dropdown reorders the already returned videos by Views/day, Total views, or Subscriber multiplier without making another API request. Videos without a multiplier remain at the bottom in multiplier mode.
 - The theme toggle stores the selected light or dark theme in browser local storage.
 - Starting a new analysis returns to the landing screen.
 
@@ -30,9 +31,18 @@ Do not use `python -m http.server` when testing the complete application. It can
 | File | Role |
 | --- | --- |
 | `index.html` | Landing, query-review, warning dialog, and results-dashboard markup. |
+| `result-ranking.js` | Pure client-side ranking helper shared by the dashboard and Node regression tests. |
 | `app.js` | Browser state, validation, API requests, and dynamic rendering. |
 | `styles.css` | Application layout, colours, responsive styling, and theme rules. |
 | `about.html` | The standalone About page served at `/about`. |
 | `about.js` / `about.css` | About-page interactions and styling. |
 
 The browser never receives the Groq or YouTube API keys; those remain in the Python backend.
+
+## Frontend regression test
+
+Run the dependency-free result-ranking regression test from the project root:
+
+```powershell
+node --test frontend/tests/result-ranking.test.cjs
+```

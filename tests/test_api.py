@@ -92,12 +92,14 @@ def test_frontend_assets_are_served(
     """The browser should be able to load frontend assets."""
 
     css_response = client.get("/styles.css")
+    ranking_javascript_response = client.get("/result-ranking.js")
     javascript_response = client.get("/app.js")
     logo_response = client.get("/assets/nicheradar-mark.svg")
     about_css_response = client.get("/about.css")
     about_javascript_response = client.get("/about.js")
 
     assert css_response.status_code == 200
+    assert ranking_javascript_response.status_code == 200
     assert javascript_response.status_code == 200
     assert logo_response.status_code == 200
     assert about_css_response.status_code == 200
@@ -463,8 +465,10 @@ def test_analysis_endpoint_returns_dashboard_data(
 
     assert payload["videos"][0]["video_id"] == ("video-123")
     assert payload["videos"][0]["thumbnail_url"] == ("https://images.example/video-123-medium.jpg")
+    assert payload["videos"][0]["rank"] == 1
     assert payload["videos"][0]["views"] == 250_000
     assert payload["videos"][0]["views_per_day"] == (125_000.0)
+    assert payload["videos"][0]["subscriber_multiplier"] == 50.0
     assert payload["videos"][0]["performance"] == ("breakout")
 
     analysis_runner.assert_called_once()
@@ -502,6 +506,138 @@ def test_analysis_endpoint_returns_dashboard_data(
         "score": 70,
         "label": "good",
     }
+
+
+def test_analysis_endpoint_preserves_client_side_ranking_values(
+    client: TestClient,
+    analysis_runner: Mock,
+) -> None:
+    """The browser should receive stable ranks and all local sorting metrics."""
+
+    velocity_leader = SimpleNamespace(
+        video_id="velocity-leader",
+        channel_id="channel-velocity",
+        title="Fast-growing Marvel theory",
+        url="https://www.youtube.com/watch?v=velocity-leader",
+        thumbnail_url=None,
+        channel_name="Velocity Channel",
+        upload_date=datetime(
+            2026,
+            8,
+            14,
+            12,
+            0,
+            tzinfo=UTC,
+        ),
+        views=150_000,
+        subscribers=3_000,
+        metrics=SimpleNamespace(
+            views_per_day=125_000.0,
+            subscriber_multiplier=50.0,
+            performance_label=PerformanceLabel.BREAKOUT,
+        ),
+    )
+    total_views_leader = SimpleNamespace(
+        video_id="total-views-leader",
+        channel_id="channel-total-views",
+        title="Popular Marvel recap",
+        url="https://www.youtube.com/watch?v=total-views-leader",
+        thumbnail_url=None,
+        channel_name="Total Views Channel",
+        upload_date=datetime(
+            2026,
+            8,
+            14,
+            12,
+            0,
+            tzinfo=UTC,
+        ),
+        views=950_000,
+        subscribers=100_000,
+        metrics=SimpleNamespace(
+            views_per_day=20_000.0,
+            subscriber_multiplier=9.5,
+            performance_label=PerformanceLabel.REGULAR,
+        ),
+    )
+    no_subscriber_data = SimpleNamespace(
+        video_id="no-subscriber-data",
+        channel_id="channel-unknown",
+        title="Marvel hidden channel video",
+        url="https://www.youtube.com/watch?v=no-subscriber-data",
+        thumbnail_url=None,
+        channel_name="Unknown Subscribers Channel",
+        upload_date=datetime(
+            2026,
+            8,
+            14,
+            12,
+            0,
+            tzinfo=UTC,
+        ),
+        views=400_000,
+        subscribers=None,
+        metrics=SimpleNamespace(
+            views_per_day=10_000.0,
+            subscriber_multiplier=None,
+            performance_label=PerformanceLabel.REGULAR,
+        ),
+    )
+
+    analysis_runner.return_value = SimpleNamespace(
+        results=SimpleNamespace(
+            considered_count=3,
+            total_count=3,
+            breakout_count=1,
+            exceptional_performance_count=0,
+            videos=(
+                velocity_leader,
+                total_views_leader,
+                no_subscriber_data,
+            ),
+        )
+    )
+
+    response = client.post(
+        "/api/analyses",
+        json={
+            "niche": "Marvel",
+            "queries": [
+                "Marvel",
+                "MCU theories",
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert [
+        {
+            "rank": video["rank"],
+            "views": video["views"],
+            "views_per_day": video["views_per_day"],
+            "subscriber_multiplier": video["subscriber_multiplier"],
+        }
+        for video in response.json()["videos"]
+    ] == [
+        {
+            "rank": 1,
+            "views": 150_000,
+            "views_per_day": 125_000.0,
+            "subscriber_multiplier": 50.0,
+        },
+        {
+            "rank": 2,
+            "views": 950_000,
+            "views_per_day": 20_000.0,
+            "subscriber_multiplier": 9.5,
+        },
+        {
+            "rank": 3,
+            "views": 400_000,
+            "views_per_day": 10_000.0,
+            "subscriber_multiplier": None,
+        },
+    ]
 
 
 def test_analysis_endpoint_rejects_duplicate_queries(

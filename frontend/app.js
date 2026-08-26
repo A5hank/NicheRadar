@@ -135,6 +135,7 @@ const diversityScorePoints = document.querySelector("#diversity-score-points");
 const diversityScoreDetail = document.querySelector("#diversity-score-detail");
 
 const resultList = document.querySelector("#result-list");
+const resultRanking = document.querySelector("#result-ranking");
 const newAnalysisButton = document.querySelector("#new-analysis-button");
 const mobileNewAnalysis = document.querySelector("#mobile-new-analysis");
 
@@ -156,6 +157,18 @@ const DARK_THEME = "dark";
 const MIN_QUERY_COUNT = 1;
 const MAX_QUERY_COUNT = 10;
 
+const resultRankingUtilities = window.NicheRadarResultRanking;
+
+if (!resultRankingUtilities) {
+  throw new Error("NicheRadar result-ranking utilities are unavailable.");
+}
+
+const {
+  DEFAULT_RANKING_MODE,
+  normalizeRankingMode,
+  sortResultVideos,
+} = resultRankingUtilities;
+
 /*
  * These variables hold the browser's current state.
  */
@@ -163,6 +176,7 @@ let activeNiche = "";
 let originalSuggestedQueries = [];
 let reviewedQueries = [];
 let relevanceWarnings = [];
+let resultVideos = [];
 let isGeneratingQueries = false;
 let isCheckingRelevance = false;
 let isRunningAnalysis = false;
@@ -1276,10 +1290,7 @@ function createResultRow(videoData) {
 }
 
 /*
- * Render every ranked video.
- *
- * The backend already sends them in views-per-day order, so JavaScript
- * preserves that order rather than sorting them again.
+ * Render every ranked video returned by the local display sorter.
  */
 function renderResults(videos) {
   resultList.replaceChildren();
@@ -1296,6 +1307,23 @@ function renderResults(videos) {
   for (const video of videos) {
     resultList.append(createResultRow(video));
   }
+}
+
+/*
+ * Reorder only the existing dashboard results. This never starts another
+ * analysis or sends a request, so changing the dropdown consumes no quota.
+ */
+function renderRankedResults() {
+  const rankingMode = normalizeRankingMode(resultRanking.value);
+
+  resultRanking.value = rankingMode;
+
+  renderResults(
+    sortResultVideos(
+      resultVideos,
+      rankingMode,
+    ),
+  );
 }
 
 /*
@@ -1358,7 +1386,14 @@ function showDashboard(analysis) {
 
   renderScorePanel(analysis);
   renderQueries(analysis.queries);
-  renderResults(analysis.videos);
+
+  /*
+   * Keep the API response intact and always begin a new analysis in the
+   * product default: views per day.
+   */
+  resultVideos = [...analysis.videos];
+  resultRanking.value = DEFAULT_RANKING_MODE;
+  renderRankedResults();
 
   landingView.hidden = true;
   reviewView.hidden = true;
@@ -1568,6 +1603,11 @@ relevanceDialog.addEventListener("cancel", (event) => {
   event.preventDefault();
   returnToWarnedQuery();
 });
+
+/*
+ * Sorting is intentionally local to the rendered dashboard results.
+ */
+resultRanking.addEventListener("change", renderRankedResults);
 
 /*
  * Switch to the opposite theme and remember the user's selection.

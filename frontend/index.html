@@ -37,6 +37,7 @@
     </script>
 
     <link rel="stylesheet" href="styles.css" />
+    <script src="result-ranking.js" defer></script>
     <script src="app.js" defer></script>
   </head>
 
@@ -545,7 +546,19 @@
           <section class="results-section" aria-labelledby="results-heading">
             <div class="results-heading-row">
               <div>
-                <p class="eyebrow">Ranked by views per day</p>
+                <div class="results-ranking-row">
+                  <p class="eyebrow">Ranked by</p>
+                  <label class="ranking-control" for="result-ranking">
+                    <span class="sr-only">Rank results by</span>
+                    <select id="result-ranking" name="result-ranking">
+                      <option value="views_per_day">Views/Day</option>
+                      <option value="views">Total Views</option>
+                      <option value="subscriber_multiplier">
+                        Subscriber Multiplier
+                      </option>
+                    </select>
+                  </label>
+                </div>
                 <h2 id="results-heading">Top-performing Short candidates</h2>
               </div>
 
