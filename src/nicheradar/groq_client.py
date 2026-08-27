@@ -7,6 +7,7 @@ import httpx
 
 GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+COMPOUND_MINI_GROQ_MODEL = "groq/compound-mini"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
@@ -130,11 +131,18 @@ class GroqClient:
         user_prompt: str,
         max_completion_tokens: int = 300,
         response_schema: dict[str, object] | None = None,
+        model: str | None = None,
+        enable_web_search: bool = False,
     ) -> dict[str, object]:
         """Ask Groq for a response containing one JSON object."""
 
         if max_completion_tokens < 1:
             raise ValueError("max_completion_tokens must be at least 1")
+
+        selected_model = self.model if model is None else model.strip()
+
+        if not selected_model:
+            raise ValueError("model must not be empty")
 
         response_format: dict[str, object] = {
             "type": "json_object",
@@ -151,7 +159,7 @@ class GroqClient:
             }
 
         request_payload: dict[str, object] = {
-            "model": self.model,
+            "model": selected_model,
             "messages": [
                 {
                     "role": "system",
@@ -166,6 +174,14 @@ class GroqClient:
             "max_completion_tokens": max_completion_tokens,
             "response_format": response_format,
         }
+
+        if enable_web_search:
+            request_payload["compound_custom"] = {
+                "tools": {
+                    "enabled_tools": ["web_search"],
+                },
+            }
+            request_payload["citation_options"] = "disabled"
 
         response = self._post_chat_completion(
             request_payload,
@@ -220,6 +236,12 @@ class GroqClient:
 
         if not isinstance(content, str) or not content:
             raise GroqAPIError("Groq completion did not contain text.")
+
+        if enable_web_search:
+            executed_tools = message.get("executed_tools")
+
+            if not isinstance(executed_tools, list) or not executed_tools:
+                raise GroqAPIError("Groq did not complete the required web search.")
 
         try:
             decoded_content = json.loads(content)

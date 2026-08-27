@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from nicheradar.groq_client import (
+    COMPOUND_MINI_GROQ_MODEL,
     DEFAULT_GROQ_MODEL,
     GROQ_CHAT_COMPLETIONS_URL,
     GroqAPIError,
@@ -90,6 +91,108 @@ def test_generate_json_raises_safe_api_error() -> None:
             client.generate_json(
                 system_prompt="Return JSON.",
                 user_prompt="Expand Marvel.",
+            )
+
+
+def test_generate_json_can_use_one_compound_web_search() -> None:
+    """A web-assisted request must use Compound Mini and its single search tool."""
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        request_payload = json.loads(request.content)
+
+        assert request_payload["model"] == COMPOUND_MINI_GROQ_MODEL
+        assert request_payload["response_format"] == {"type": "json_object"}
+        assert request_payload["compound_custom"] == {
+            "tools": {
+                "enabled_tools": ["web_search"],
+            },
+        }
+        assert "tool_choice" not in request_payload
+        assert request_payload["citation_options"] == "disabled"
+
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "is_high_confidence_typo": True,
+                                    "suggestion": "Twitch clips",
+                                }
+                            ),
+                            "executed_tools": [
+                                {
+                                    "type": "web_search",
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with GroqClient(
+        "test-groq-key",
+        transport=transport,
+    ) as client:
+        result = client.generate_json(
+            system_prompt="Search first, then return JSON.",
+            user_prompt='{"niche":"twitch clups"}',
+            model=COMPOUND_MINI_GROQ_MODEL,
+            enable_web_search=True,
+        )
+
+    assert result == {
+        "is_high_confidence_typo": True,
+        "suggestion": "Twitch clips",
+    }
+
+
+def test_generate_json_rejects_a_missing_required_web_search() -> None:
+    """A web-assisted suggestion cannot be trusted without search evidence."""
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps(
+                                {
+                                    "is_high_confidence_typo": True,
+                                    "suggestion": "Twitch clips",
+                                }
+                            )
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with GroqClient(
+        "test-groq-key",
+        transport=transport,
+    ) as client:
+        with pytest.raises(
+            GroqAPIError,
+            match="did not complete the required web search",
+        ):
+            client.generate_json(
+                system_prompt="Search first, then return JSON.",
+                user_prompt='{"niche":"twitch clups"}',
+                model=COMPOUND_MINI_GROQ_MODEL,
+                enable_web_search=True,
             )
 
 

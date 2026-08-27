@@ -35,6 +35,10 @@ from nicheradar.groq_client import (
     GroqAPIError,
     GroqClient,
 )
+from nicheradar.niche_spelling import (
+    NicheSpellingError,
+    check_niche_spelling,
+)
 from nicheradar.pipeline import (
     NicheAnalysis,
     run_niche_analysis,
@@ -97,6 +101,37 @@ class QueryExpansionResponse(BaseModel):
 
     niche: str
     queries: list[str]
+
+
+class NicheSpellingRequest(BaseModel):
+    """A niche to check before query expansion."""
+
+    niche: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    @field_validator("niche")
+    @classmethod
+    def normalize_niche(
+        cls,
+        value: str,
+    ) -> str:
+        """Normalize and validate the niche being checked."""
+
+        cleaned_niche = normalize_query(value)
+
+        if not cleaned_niche:
+            raise ValueError("niche must not be empty")
+
+        return cleaned_niche
+
+
+class NicheSpellingResponse(BaseModel):
+    """A conservative web-assisted search suggestion for the original niche."""
+
+    niche: str
+    suggestion: str | None
 
 
 class QueryRelevanceRequest(BaseModel):
@@ -298,6 +333,19 @@ def get_groq_client() -> Iterator[GroqClient]:
         yield groq_client
 
 
+def get_optional_groq_client() -> Iterator[GroqClient | None]:
+    """Provide Groq when configured, or let an advisory feature fail open."""
+
+    settings = get_settings()
+
+    if not settings.groq_api_key:
+        yield None
+        return
+
+    with GroqClient(settings.groq_api_key) as groq_client:
+        yield groq_client
+
+
 def execute_niche_analysis(
     request: AnalysisRequest,
 ) -> NicheAnalysis:
@@ -428,6 +476,52 @@ def health_check() -> dict[str, str]:
 
 
 @app.post(
+    "/api/niche-spelling",
+    response_model=NicheSpellingResponse,
+    tags=["analysis"],
+)
+def check_entered_niche_spelling(
+    request: NicheSpellingRequest,
+    groq_client: Annotated[
+        GroqClient | None,
+        Depends(get_optional_groq_client),
+    ],
+) -> NicheSpellingResponse:
+    """Offer only high-confidence spelling corrections before query expansion."""
+
+    if groq_client is None:
+        return NicheSpellingResponse(
+            niche=request.niche,
+            suggestion=None,
+        )
+
+    try:
+        spelling_check = check_niche_spelling(
+            groq_client,
+            request.niche,
+        )
+    except (
+        GroqAPIError,
+        NicheSpellingError,
+    ):
+        LOGGER.warning(
+            "Niche spelling check failed for %r; continuing without a suggestion.",
+            request.niche,
+            exc_info=True,
+        )
+
+        return NicheSpellingResponse(
+            niche=request.niche,
+            suggestion=None,
+        )
+
+    return NicheSpellingResponse(
+        niche=spelling_check.niche,
+        suggestion=spelling_check.suggestion,
+    )
+
+
+@app.post(
     "/api/queries",
     response_model=QueryExpansionResponse,
     tags=["analysis"],
@@ -532,6 +626,13 @@ def analyze_niche(
             detail=("Could not access the NicheRadar analysis database."),
         ) from error
     except RuntimeError as error:
+        # Preserve the upstream cause in server logs without exposing it to the browser.
+        LOGGER.exception(
+            "YouTube analysis failed for niche %r with %d approved queries.",
+            request.niche,
+            len(request.queries),
+        )
+
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=("Could not complete the YouTube analysis right now."),

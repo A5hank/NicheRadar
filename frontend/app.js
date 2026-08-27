@@ -26,9 +26,26 @@ const themeToggle = document.querySelector("#theme-toggle");
 const nicheForm = document.querySelector("#niche-form");
 const nicheInput = document.querySelector("#niche-input");
 const formError = document.querySelector("#form-error");
+const landingStatus = document.querySelector("#landing-status");
 const startAnalysisButton = document.querySelector("#start-analysis-button");
 const startAnalysisButtonLabel = document.querySelector(
   "#start-analysis-button-label",
+);
+const spellingSuggestionDialog = document.querySelector(
+  "#spelling-suggestion-dialog",
+);
+const spellingSuggestedNiche = document.querySelector(
+  "#spelling-suggested-niche",
+);
+const spellingOriginalNiche = document.querySelector("#spelling-original-niche");
+const useSpellingSuggestionButton = document.querySelector(
+  "#use-spelling-suggestion-button",
+);
+const useSpellingSuggestionLabel = document.querySelector(
+  "#use-spelling-suggestion-label",
+);
+const keepOriginalNicheButton = document.querySelector(
+  "#keep-original-niche-button",
 );
 
 /*
@@ -169,6 +186,17 @@ const {
   sortResultVideos,
 } = resultRankingUtilities;
 
+const spellingSuggestionUtilities = window.NicheRadarSpellingSuggestion;
+
+if (!spellingSuggestionUtilities) {
+  throw new Error("NicheRadar spelling-suggestion utilities are unavailable.");
+}
+
+const {
+  chooseNicheAfterSpellingCheck,
+  getUsableSpellingSuggestion,
+} = spellingSuggestionUtilities;
+
 /*
  * These variables hold the browser's current state.
  */
@@ -177,6 +205,10 @@ let originalSuggestedQueries = [];
 let reviewedQueries = [];
 let relevanceWarnings = [];
 let resultVideos = [];
+let pendingOriginalNiche = "";
+let pendingSpellingSuggestion = null;
+let landingRequestId = 0;
+let isCheckingSpelling = false;
 let isGeneratingQueries = false;
 let isCheckingRelevance = false;
 let isRunningAnalysis = false;
@@ -654,6 +686,36 @@ function extractApiError(payload, fallbackMessage) {
 async function readJsonResponse(response) {
   try {
     return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * Ask for an optional web-assisted search suggestion before query expansion.
+ *
+ * This check is advisory and must never prevent the original niche from
+ * continuing. Any unavailable, failed, or malformed response becomes null.
+ */
+async function requestNicheSpelling(niche) {
+  try {
+    const response = await fetch("/api/niche-spelling", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        niche,
+      }),
+    });
+
+    const payload = await readJsonResponse(response);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return getUsableSpellingSuggestion(niche, payload);
   } catch {
     return null;
   }
@@ -1327,22 +1389,151 @@ function renderRankedResults() {
 }
 
 /*
- * Change the landing button while Groq generates suggestions.
+ * Return whether the user still needs to make an explicit search choice.
  */
-function setLandingBusy(isBusy) {
-  nicheInput.disabled = isBusy;
-  startAnalysisButton.disabled = isBusy;
-  startAnalysisButtonLabel.textContent = isBusy
-    ? "Building queries..."
-    : "Analyse";
+function hasPendingSpellingSuggestion() {
+  return pendingSpellingSuggestion !== null;
+}
+
+/*
+ * Remove a displayed suggestion and its associated state.
+ */
+function clearSpellingSuggestion() {
+  pendingOriginalNiche = "";
+  pendingSpellingSuggestion = null;
+  spellingSuggestedNiche.textContent = "";
+  spellingOriginalNiche.textContent = "";
+  useSpellingSuggestionLabel.textContent = "Search instead";
+  keepOriginalNicheButton.textContent = "Keep original search";
+
+  if (spellingSuggestionDialog.open) {
+    spellingSuggestionDialog.close();
+  }
+}
+
+/*
+ * Keep the landing form's loading state and button text in sync.
+ */
+function updateLandingControls() {
+  const isBusy = isCheckingSpelling || isGeneratingQueries;
+  const isLocked = isBusy || hasPendingSpellingSuggestion();
+
+  nicheInput.disabled = isLocked;
+  startAnalysisButton.disabled = isLocked;
+
+  if (isCheckingSpelling) {
+    startAnalysisButtonLabel.textContent = "Checking matches...";
+  } else if (isGeneratingQueries) {
+    startAnalysisButtonLabel.textContent = "Building queries...";
+  } else {
+    startAnalysisButtonLabel.textContent = "Analyse";
+  }
 
   startAnalysisButton.setAttribute("aria-busy", String(isBusy));
+}
+
+/*
+ * Show an optional search match without changing the entered niche.
+ */
+function showSpellingSuggestion(originalNiche, suggestion) {
+  pendingOriginalNiche = originalNiche;
+  pendingSpellingSuggestion = suggestion;
+  landingStatus.textContent = "";
+  spellingSuggestedNiche.textContent = suggestion;
+  spellingOriginalNiche.textContent = originalNiche;
+  useSpellingSuggestionLabel.textContent = `Search instead for ${suggestion}`;
+  keepOriginalNicheButton.textContent = `Keep ${originalNiche}`;
+  spellingSuggestionDialog.showModal();
+  updateLandingControls();
+
+  window.requestAnimationFrame(() => {
+    if (spellingSuggestionDialog.open && hasPendingSpellingSuggestion()) {
+      useSpellingSuggestionButton.focus();
+    }
+  });
+}
+
+/*
+ * Generate queries only after there was no suggestion or the user chose one.
+ */
+async function beginQueryExpansion(niche, requestId) {
+  isGeneratingQueries = true;
+  landingStatus.textContent = `Building query suggestions for ${niche}.`;
+  updateLandingControls();
+
+  try {
+    const expansion = await requestQuerySuggestions(niche);
+
+    if (requestId !== landingRequestId) {
+      return;
+    }
+
+    clearSpellingSuggestion();
+    showReview(expansion.niche, expansion.queries);
+  } catch (error) {
+    if (requestId !== landingRequestId) {
+      return;
+    }
+
+    landingStatus.textContent = "";
+    formError.textContent =
+      error instanceof Error
+        ? error.message
+        : "NicheRadar could not generate search queries.";
+
+    window.requestAnimationFrame(() => {
+      nicheInput.focus();
+    });
+  } finally {
+    if (requestId === landingRequestId) {
+      isGeneratingQueries = false;
+      updateLandingControls();
+    }
+  }
+}
+
+/*
+ * Check for a likely search match before query expansion. A failed check
+ * deliberately falls through to the original niche, so it cannot block a
+ * legitimate analysis.
+ */
+async function beginNicheSpellingCheck(niche, requestId) {
+  isCheckingSpelling = true;
+  landingStatus.textContent = "Checking possible matches...";
+  updateLandingControls();
+  landingStatus.focus();
+
+  let suggestion = null;
+
+  try {
+    suggestion = await requestNicheSpelling(niche);
+  } catch {
+    /* requestNicheSpelling already fails open; retain this guard defensively. */
+  } finally {
+    if (requestId === landingRequestId) {
+      isCheckingSpelling = false;
+      updateLandingControls();
+    }
+  }
+
+  if (requestId !== landingRequestId) {
+    return;
+  }
+
+  if (suggestion) {
+    showSpellingSuggestion(niche, suggestion);
+    return;
+  }
+
+  await beginQueryExpansion(niche, requestId);
 }
 
 /*
  * Open the query-review screen with Groq's real suggestions.
  */
 function showReview(niche, queries) {
+  clearSpellingSuggestion();
+  landingStatus.textContent = "";
   activeNiche = niche;
 
   originalSuggestedQueries = queries.map(normalizeQueryText);
@@ -1363,6 +1554,12 @@ function showReview(niche, queries) {
   window.scrollTo({
     top: 0,
     behavior: "smooth",
+  });
+
+  window.requestAnimationFrame(() => {
+    if (!reviewView.hidden) {
+      reviewBackButton.focus();
+    }
   });
 }
 
@@ -1409,6 +1606,11 @@ function showDashboard(analysis) {
  * Return to the landing page.
  */
 function showLanding({ clearInput = true } = {}) {
+  landingRequestId += 1;
+  isCheckingSpelling = false;
+  isGeneratingQueries = false;
+  clearSpellingSuggestion();
+
   dashboardView.hidden = true;
   reviewView.hidden = true;
   landingView.hidden = false;
@@ -1418,7 +1620,8 @@ function showLanding({ clearInput = true } = {}) {
   }
 
   formError.textContent = "";
-  setLandingBusy(false);
+  landingStatus.textContent = "";
+  updateLandingControls();
 
   window.scrollTo({
     top: 0,
@@ -1431,8 +1634,10 @@ function showLanding({ clearInput = true } = {}) {
 /*
  * Landing-page submission:
  * 1. Validate the niche.
- * 2. Request Groq suggestions.
- * 3. Open the review screen.
+ * 2. Check for a conservative web-assisted search suggestion.
+ * 3. Let the user explicitly choose the original or suggested search.
+ * 4. Request Groq query suggestions.
+ * 5. Open the review screen.
  *
  * Because this listens to the form's submit event, both clicking the
  * button and pressing Enter in the search field work.
@@ -1440,11 +1645,15 @@ function showLanding({ clearInput = true } = {}) {
 nicheForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  if (isGeneratingQueries) {
+  if (
+    isCheckingSpelling ||
+    isGeneratingQueries ||
+    hasPendingSpellingSuggestion()
+  ) {
     return;
   }
 
-  const niche = nicheInput.value.trim();
+  const niche = normalizeQueryText(nicheInput.value);
 
   if (!niche) {
     formError.textContent = "Enter a niche to begin your analysis.";
@@ -1453,22 +1662,59 @@ nicheForm.addEventListener("submit", async (event) => {
   }
 
   formError.textContent = "";
-  isGeneratingQueries = true;
-  setLandingBusy(true);
+  clearSpellingSuggestion();
 
-  try {
-    const expansion = await requestQuerySuggestions(niche);
+  const requestId = ++landingRequestId;
 
-    showReview(expansion.niche, expansion.queries);
-  } catch (error) {
-    formError.textContent =
-      error instanceof Error
-        ? error.message
-        : "NicheRadar could not generate search queries.";
-  } finally {
-    isGeneratingQueries = false;
-    setLandingBusy(false);
+  await beginNicheSpellingCheck(niche, requestId);
+});
+
+/*
+ * Apply only the explicit choice shown in the suggestion card. Choosing Keep
+ * retains the exact original niche; neither choice runs a second check.
+ */
+async function continueAfterSpellingChoice(choice) {
+  if (!hasPendingSpellingSuggestion()) {
+    return;
   }
+
+  const originalNiche = pendingOriginalNiche;
+  const suggestion = pendingSpellingSuggestion;
+  const selectedNiche = chooseNicheAfterSpellingCheck(
+    originalNiche,
+    suggestion,
+    choice,
+  );
+
+  clearSpellingSuggestion();
+  landingStatus.textContent = `Building query suggestions for ${selectedNiche}.`;
+  landingStatus.focus();
+  nicheInput.value = selectedNiche;
+  formError.textContent = "";
+
+  const requestId = ++landingRequestId;
+
+  await beginQueryExpansion(selectedNiche, requestId);
+}
+
+useSpellingSuggestionButton.addEventListener("click", async () => {
+  await continueAfterSpellingChoice("use");
+});
+
+keepOriginalNicheButton.addEventListener("click", async () => {
+  await continueAfterSpellingChoice("keep");
+});
+
+/*
+ * Escape dismisses the optional prompt and returns to the original input.
+ * It never silently chooses either search or starts query generation.
+ */
+spellingSuggestionDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  clearSpellingSuggestion();
+  landingStatus.textContent = "";
+  updateLandingControls();
+  nicheInput.focus();
 });
 
 /*

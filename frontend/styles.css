@@ -333,6 +333,17 @@ button {
   font-weight: 650;
 }
 
+.landing-status {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.landing-status:empty {
+  display: none;
+}
+
 .search-hint {
   margin: 0.2rem 0 0;
   color: var(--muted);
@@ -1660,6 +1671,15 @@ html[data-theme="dark"] .theme-icon-moon {
     display: none;
   }
 
+  .niche-form button:disabled .start-analysis-label {
+    display: inline;
+    font-size: 0.72rem;
+  }
+
+  .niche-form button:disabled .button-arrow {
+    display: none;
+  }
+
   .niche-form button .button-arrow {
     font-size: 1.2rem;
   }
@@ -1783,6 +1803,12 @@ html[data-theme="dark"] .theme-icon-moon {
   margin: 1rem 0 1.4rem;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.spelling-suggestion-dialog h2,
+.spelling-suggestion-dialog strong,
+.spelling-suggestion-dialog button {
+  overflow-wrap: anywhere;
 }
 
 .relevance-warning-list {

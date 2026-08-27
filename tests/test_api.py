@@ -17,6 +17,7 @@ from nicheradar.api import (
     app,
     get_analysis_runner,
     get_groq_client,
+    get_optional_groq_client,
 )
 from nicheradar.groq_client import (
     GroqAPIError,
@@ -48,10 +49,14 @@ def client(
     def override_groq_client() -> Iterator[Mock]:
         yield groq_client
 
+    def override_optional_groq_client() -> Iterator[Mock]:
+        yield groq_client
+
     def override_analysis_runner() -> Mock:
         return analysis_runner
 
     app.dependency_overrides[get_groq_client] = override_groq_client
+    app.dependency_overrides[get_optional_groq_client] = override_optional_groq_client
     app.dependency_overrides[get_analysis_runner] = override_analysis_runner
 
     try:
@@ -84,6 +89,7 @@ def test_frontend_homepage_is_served(
     assert response.status_code == 200
     assert "NicheRadar" in response.text
     assert 'href="/about"' in response.text
+    assert 'src="spelling-suggestion.js"' in response.text
 
 
 def test_frontend_assets_are_served(
@@ -93,6 +99,7 @@ def test_frontend_assets_are_served(
 
     css_response = client.get("/styles.css")
     ranking_javascript_response = client.get("/result-ranking.js")
+    spelling_javascript_response = client.get("/spelling-suggestion.js")
     javascript_response = client.get("/app.js")
     logo_response = client.get("/assets/nicheradar-mark.svg")
     about_css_response = client.get("/about.css")
@@ -100,6 +107,7 @@ def test_frontend_assets_are_served(
 
     assert css_response.status_code == 200
     assert ranking_javascript_response.status_code == 200
+    assert spelling_javascript_response.status_code == 200
     assert javascript_response.status_code == 200
     assert logo_response.status_code == 200
     assert about_css_response.status_code == 200
@@ -229,6 +237,127 @@ def test_query_endpoint_returns_expanded_queries(
         ],
     }
     groq_client.generate_json.assert_called_once()
+
+
+def test_niche_spelling_endpoint_returns_high_confidence_suggestion(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """An obvious typo should be offered without changing the original niche."""
+
+    groq_client.generate_json.return_value = {
+        "is_high_confidence_typo": True,
+        "suggestion": "Minecraft",
+    }
+
+    response = client.post(
+        "/api/niche-spelling",
+        json={
+            "niche": "  meincraft  ",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "meincraft",
+        "suggestion": "Minecraft",
+    }
+    groq_client.generate_json.assert_called_once()
+
+
+def test_niche_spelling_endpoint_leaves_uncommon_niche_unchanged(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """An uncommon niche should not receive an uncertain correction."""
+
+    groq_client.generate_json.return_value = {
+        "is_high_confidence_typo": False,
+        "suggestion": "",
+    }
+
+    response = client.post(
+        "/api/niche-spelling",
+        json={
+            "niche": "AetherFlux",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "AetherFlux",
+        "suggestion": None,
+    }
+
+
+def test_niche_spelling_endpoint_fails_open_when_service_fails(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """A spelling outage must not stop the original niche from continuing."""
+
+    groq_client.generate_json.side_effect = GroqAPIError("Could not connect to the Groq API.")
+
+    response = client.post(
+        "/api/niche-spelling",
+        json={
+            "niche": "meincraft",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "meincraft",
+        "suggestion": None,
+    }
+
+
+def test_niche_spelling_endpoint_fails_open_for_malformed_service_output(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """Invalid spelling output should not prevent the original niche continuing."""
+
+    groq_client.generate_json.return_value = {
+        "is_high_confidence_typo": True,
+        "suggestion": "",
+    }
+
+    response = client.post(
+        "/api/niche-spelling",
+        json={
+            "niche": "meincraft",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "meincraft",
+        "suggestion": None,
+    }
+
+
+def test_niche_spelling_endpoint_fails_open_without_groq(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """The advisory endpoint should also be safe when Groq is not configured."""
+
+    app.dependency_overrides[get_optional_groq_client] = lambda: None
+
+    response = client.post(
+        "/api/niche-spelling",
+        json={
+            "niche": "meincraft",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "meincraft",
+        "suggestion": None,
+    }
+    groq_client.generate_json.assert_not_called()
 
 
 def test_query_endpoint_rejects_blank_niche(

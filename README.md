@@ -93,6 +93,7 @@ python -m nicheradar.analyze "AI productivity" --search-limit 50 --result-limit 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Confirms that the application is running. |
+| `POST` | `/api/niche-spelling` | Uses a single Groq web search to return an optional, high-confidence search suggestion before query expansion. |
 | `POST` | `/api/queries` | Generates focused search queries for a niche. |
 | `POST` | `/api/query-relevance` | Checks manually changed queries for relevance. |
 | `POST` | `/api/analyses` | Collects metadata and returns a complete niche analysis. |

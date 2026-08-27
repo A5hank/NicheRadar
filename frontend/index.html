@@ -38,6 +38,7 @@
 
     <link rel="stylesheet" href="styles.css" />
     <script src="result-ranking.js" defer></script>
+    <script src="spelling-suggestion.js" defer></script>
     <script src="app.js" defer></script>
   </head>
 
@@ -137,6 +138,13 @@
           </form>
 
           <p id="form-error" class="form-error" role="alert"></p>
+          <p
+            id="landing-status"
+            class="landing-status"
+            role="status"
+            tabindex="-1"
+          ></p>
+
           <p class="search-hint">
             You can try Cooking, Minecraft, AI Productivity Tools etc.
           </p>
@@ -224,6 +232,52 @@
           </div>
         </div>
       </section>
+
+      <dialog
+        id="spelling-suggestion-dialog"
+        class="relevance-dialog spelling-suggestion-dialog"
+        aria-describedby="spelling-suggestion-description"
+        aria-labelledby="spelling-suggestion-title"
+      >
+        <div class="relevance-dialog-card">
+          <p class="eyebrow">Search suggestion</p>
+
+          <h2 id="spelling-suggestion-title">
+            Search instead for <span id="spelling-suggested-niche"></span>?
+          </h2>
+
+          <p
+            id="spelling-suggestion-description"
+            class="relevance-dialog-description"
+          >
+            We found a likely match for
+            <strong id="spelling-original-niche"></strong>.
+          </p>
+
+          <p class="relevance-dialog-note">
+            We&rsquo;ll only use this search if you choose it.
+          </p>
+
+          <div class="relevance-dialog-actions">
+            <button
+              id="keep-original-niche-button"
+              class="quiet-button"
+              type="button"
+            >
+              Keep original search
+            </button>
+
+            <button
+              id="use-spelling-suggestion-button"
+              class="continue-warning-button"
+              type="button"
+            >
+              <span id="use-spelling-suggestion-label">Search instead</span>
+              <span aria-hidden="true">&rarr;</span>
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       <dialog
         id="relevance-dialog"
