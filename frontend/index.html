@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="result-ranking.js" defer></script>
     <script src="spelling-suggestion.js" defer></script>
+    <script src="analysis-summary.js" defer></script>
     <script src="app.js" defer></script>
   </head>
 
@@ -363,7 +364,6 @@
             <div>
               <p class="eyebrow">Niche analysis</p>
               <h1 id="dashboard-title">Marvel</h1>
-              <p>What&rsquo;s moving in this niche right now.</p>
             </div>
             <button
               id="mobile-new-analysis"
@@ -565,6 +565,54 @@
                 </article>
               </div>
             </details>
+          </section>
+
+          <section
+            id="analysis-summary-panel"
+            class="analysis-summary-panel"
+            aria-busy="true"
+            aria-describedby="analysis-summary-disclaimer"
+            aria-labelledby="analysis-summary-heading"
+          >
+            <div class="analysis-summary-heading-row">
+              <div>
+                <p class="eyebrow">Niche Summary</p>
+                <h2 id="analysis-summary-heading">Current Signal</h2>
+              </div>
+            </div>
+
+            <p
+              id="analysis-summary-status"
+              class="analysis-summary-status"
+              role="status"
+            >
+              Generating summary&hellip;
+            </p>
+
+            <ul id="analysis-summary-observations" hidden></ul>
+
+            <aside
+              id="new-creator-signal"
+              class="new-creator-signal"
+              aria-labelledby="new-creator-signal-heading"
+              hidden
+            >
+              <p id="new-creator-signal-heading" class="eyebrow">
+                New-creator signal
+              </p>
+              <p>
+                <strong id="new-creator-signal-label">—</strong>
+                <span id="new-creator-signal-rationale"></span>
+              </p>
+            </aside>
+
+            <p
+              id="analysis-summary-disclaimer"
+              class="analysis-summary-disclaimer"
+            >
+              Based on current public YouTube data, not a guarantee of growth
+              or income.
+            </p>
           </section>
 
           <section class="stats-grid" aria-label="Analysis highlights">

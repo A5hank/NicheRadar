@@ -39,6 +39,14 @@ from nicheradar.niche_spelling import (
     NicheSpellingError,
     check_niche_spelling,
 )
+from nicheradar.niche_summary import (
+    AnalysisSummaryFacts,
+    NewCreatorSignal,
+    NewCreatorSignalLabel,
+    NicheSummaryError,
+    determine_new_creator_signal,
+    generate_niche_summary,
+)
 from nicheradar.pipeline import (
     NicheAnalysis,
     run_niche_analysis,
@@ -132,6 +140,88 @@ class NicheSpellingResponse(BaseModel):
 
     niche: str
     suggestion: str | None
+
+
+class AnalysisSummaryContext(BaseModel):
+    """Validated completed-analysis facts used for the optional summary."""
+
+    query_count: int = Field(ge=1, le=MAX_QUERY_COUNT)
+    videos_considered: int = Field(ge=0)
+    videos_returned: int = Field(ge=0)
+    videos_with_subscriber_data: int = Field(ge=0)
+    breakout_count: int = Field(ge=0)
+    breakout_channel_count: int = Field(ge=0)
+    exceptional_count: int = Field(ge=0)
+    unique_channel_count: int = Field(ge=0)
+    virality_score: int = Field(ge=0, le=100)
+    confidence_score: int = Field(ge=0, le=100)
+    median_views_per_day: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_summary_facts(
+        self,
+    ) -> "AnalysisSummaryContext":
+        """Ensure the browser cannot submit contradictory summary facts."""
+
+        self.to_facts()
+
+        return self
+
+    def to_facts(
+        self,
+    ) -> AnalysisSummaryFacts:
+        """Convert the browser-safe context to the summary domain model."""
+
+        return AnalysisSummaryFacts(
+            query_count=self.query_count,
+            videos_considered=self.videos_considered,
+            videos_returned=self.videos_returned,
+            videos_with_subscriber_data=self.videos_with_subscriber_data,
+            breakout_count=self.breakout_count,
+            breakout_channel_count=self.breakout_channel_count,
+            exceptional_count=self.exceptional_count,
+            unique_channel_count=self.unique_channel_count,
+            virality_score=self.virality_score,
+            confidence_score=self.confidence_score,
+            median_views_per_day=self.median_views_per_day,
+        )
+
+
+class AnalysisSummaryRequest(BaseModel):
+    """Completed facts sent for optional AI explanation only."""
+
+    niche: str = Field(min_length=1, max_length=100)
+    summary_context: AnalysisSummaryContext
+
+    @field_validator("niche")
+    @classmethod
+    def normalize_niche(
+        cls,
+        value: str,
+    ) -> str:
+        """Normalize the niche without treating it as prompt instructions."""
+
+        cleaned_niche = normalize_query(value)
+
+        if not cleaned_niche:
+            raise ValueError("niche must not be empty")
+
+        return cleaned_niche
+
+
+class NewCreatorSignalResponse(BaseModel):
+    """Deterministic new-creator interpretation shown beneath the summary."""
+
+    label: NewCreatorSignalLabel
+    rationale: str
+
+
+class AnalysisSummaryResponse(BaseModel):
+    """Optional AI observations plus a deterministic new-creator signal."""
+
+    niche: str
+    observations: list[str] | None
+    new_creator_signal: NewCreatorSignalResponse
 
 
 class QueryRelevanceRequest(BaseModel):
@@ -309,6 +399,7 @@ class AnalysisResponse(BaseModel):
     exceptional_performance_count: int
     virality_score: ViralityScoreResponse
     confidence_score: ConfidenceScoreResponse
+    summary_context: AnalysisSummaryContext
     videos: list[AnalysisVideoResponse]
 
 
@@ -416,6 +507,14 @@ def build_analysis_response(
 
     videos_with_subscriber_data = sum(video.subscribers is not None for video in result_videos)
 
+    breakout_channel_count = len(
+        {
+            video.channel_id
+            for video in result_videos
+            if video.metrics.performance_label is PerformanceLabel.BREAKOUT
+        }
+    )
+
     virality = calculate_virality_score(
         views_per_day=(video.metrics.views_per_day for video in result_videos),
         breakout_count=(analysis.results.breakout_count),
@@ -452,6 +551,19 @@ def build_analysis_response(
         confidence_score=ConfidenceScoreResponse(
             score=confidence.score,
             label=confidence.label,
+        ),
+        summary_context=AnalysisSummaryContext(
+            query_count=len(request.queries),
+            videos_considered=analysis.results.considered_count,
+            videos_returned=analysis.results.total_count,
+            videos_with_subscriber_data=videos_with_subscriber_data,
+            breakout_count=analysis.results.breakout_count,
+            breakout_channel_count=breakout_channel_count,
+            exceptional_count=analysis.results.exceptional_performance_count,
+            unique_channel_count=unique_channel_count,
+            virality_score=virality.score,
+            confidence_score=confidence.score,
+            median_views_per_day=virality.median_views_per_day,
         ),
         videos=videos,
     )
@@ -518,6 +630,54 @@ def check_entered_niche_spelling(
     return NicheSpellingResponse(
         niche=spelling_check.niche,
         suggestion=spelling_check.suggestion,
+    )
+
+
+@app.post(
+    "/api/analysis-summary",
+    response_model=AnalysisSummaryResponse,
+    tags=["analysis"],
+)
+def generate_analysis_summary(
+    request: AnalysisSummaryRequest,
+    groq_client: Annotated[
+        GroqClient | None,
+        Depends(get_optional_groq_client),
+    ],
+) -> AnalysisSummaryResponse:
+    """Generate optional observations without rerunning the analysis pipeline."""
+
+    facts = request.summary_context.to_facts()
+    new_creator_signal: NewCreatorSignal = determine_new_creator_signal(facts)
+    observations: list[str] | None = None
+
+    if groq_client is not None:
+        try:
+            observations = list(
+                generate_niche_summary(
+                    groq_client,
+                    niche=request.niche,
+                    facts=facts,
+                )
+            )
+        except (
+            GroqAPIError,
+            NicheSummaryError,
+            ValueError,
+        ):
+            LOGGER.warning(
+                "AI niche summary failed for %r; keeping the deterministic dashboard available.",
+                request.niche,
+                exc_info=True,
+            )
+
+    return AnalysisSummaryResponse(
+        niche=request.niche,
+        observations=observations,
+        new_creator_signal=NewCreatorSignalResponse(
+            label=new_creator_signal.label,
+            rationale=new_creator_signal.rationale,
+        ),
     )
 
 

@@ -97,6 +97,7 @@ python -m nicheradar.analyze "AI productivity" --search-limit 50 --result-limit 
 | `POST` | `/api/queries` | Generates focused search queries for a niche. |
 | `POST` | `/api/query-relevance` | Checks manually changed queries for relevance. |
 | `POST` | `/api/analyses` | Collects metadata and returns a complete niche analysis. |
+| `POST` | `/api/analysis-summary` | Returns optional Groq observations from completed analysis facts and a deterministic new-creator signal; it never reruns YouTube analysis. |
 
 ## Run with containers
 

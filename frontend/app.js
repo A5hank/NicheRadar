@@ -151,6 +151,19 @@ const diversityScorePoints = document.querySelector("#diversity-score-points");
 
 const diversityScoreDetail = document.querySelector("#diversity-score-detail");
 
+const analysisSummaryPanel = document.querySelector("#analysis-summary-panel");
+const analysisSummaryStatus = document.querySelector("#analysis-summary-status");
+const analysisSummaryObservations = document.querySelector(
+  "#analysis-summary-observations",
+);
+const newCreatorSignal = document.querySelector("#new-creator-signal");
+const newCreatorSignalLabel = document.querySelector(
+  "#new-creator-signal-label",
+);
+const newCreatorSignalRationale = document.querySelector(
+  "#new-creator-signal-rationale",
+);
+
 const resultList = document.querySelector("#result-list");
 const resultRanking = document.querySelector("#result-ranking");
 const newAnalysisButton = document.querySelector("#new-analysis-button");
@@ -197,6 +210,17 @@ const {
   getUsableSpellingSuggestion,
 } = spellingSuggestionUtilities;
 
+const analysisSummaryUtilities = window.NicheRadarAnalysisSummary;
+
+if (!analysisSummaryUtilities) {
+  throw new Error("NicheRadar analysis-summary utilities are unavailable.");
+}
+
+const {
+  buildAnalysisSummaryRequest,
+  getUsableAnalysisSummary,
+} = analysisSummaryUtilities;
+
 /*
  * These variables hold the browser's current state.
  */
@@ -212,6 +236,10 @@ let isCheckingSpelling = false;
 let isGeneratingQueries = false;
 let isCheckingRelevance = false;
 let isRunningAnalysis = false;
+let analysisSummaryRequestId = 0;
+let analysisSummaryAbortController = null;
+
+const ANALYSIS_SUMMARY_TIMEOUT_MS = 15_000;
 
 /*
  * Apply one of NicheRadar's supported themes.
@@ -839,6 +867,157 @@ async function requestAnalysis(niche, queries) {
   }
 
   return payload;
+}
+
+/*
+ * Stop an optional summary request when the dashboard changes. A delayed Groq
+ * response must never overwrite the next analysis or a returned landing page.
+ */
+function cancelAnalysisSummaryRequest() {
+  analysisSummaryRequestId += 1;
+
+  if (analysisSummaryAbortController) {
+    analysisSummaryAbortController.abort();
+    analysisSummaryAbortController = null;
+  }
+}
+
+/*
+ * Reset the card as soon as deterministic analysis results reach the browser.
+ * The main dashboard remains available while the optional summary is fetched.
+ */
+function prepareAnalysisSummary() {
+  analysisSummaryPanel.setAttribute("aria-busy", "true");
+  analysisSummaryStatus.hidden = false;
+  analysisSummaryStatus.dataset.state = "loading";
+  analysisSummaryStatus.textContent = "Generating summary…";
+  analysisSummaryObservations.replaceChildren();
+  analysisSummaryObservations.hidden = true;
+  analysisSummaryPanel.removeAttribute("data-signal");
+  newCreatorSignal.hidden = true;
+  newCreatorSignal.removeAttribute("data-signal");
+  newCreatorSignalLabel.textContent = "";
+  newCreatorSignalRationale.textContent = "";
+}
+
+/*
+ * Render the deterministic verdict even when Groq cannot provide prose.
+ */
+function renderNewCreatorSignal(signal) {
+  analysisSummaryPanel.dataset.signal = signal.label;
+  newCreatorSignal.dataset.signal = signal.label;
+  newCreatorSignalLabel.textContent = signal.labelText;
+  newCreatorSignalRationale.textContent = signal.rationale;
+  newCreatorSignal.hidden = false;
+}
+
+/*
+ * Keep a failed optional summary contained to this card.
+ */
+function showAnalysisSummaryUnavailable() {
+  analysisSummaryPanel.setAttribute("aria-busy", "false");
+  analysisSummaryStatus.hidden = false;
+  analysisSummaryStatus.dataset.state = "unavailable";
+  analysisSummaryStatus.textContent = "Summary unavailable.";
+  analysisSummaryObservations.replaceChildren();
+  analysisSummaryObservations.hidden = true;
+}
+
+/*
+ * Render only validated text returned by the API. textContent prevents a model
+ * response from becoming HTML in the dashboard.
+ */
+function renderAnalysisSummary(summary) {
+  renderNewCreatorSignal(summary.newCreatorSignal);
+  analysisSummaryPanel.setAttribute("aria-busy", "false");
+
+  if (!summary.observations) {
+    showAnalysisSummaryUnavailable();
+    return;
+  }
+
+  const items = summary.observations.map((observation) => {
+    const item = document.createElement("li");
+    item.textContent = observation;
+    return item;
+  });
+
+  analysisSummaryObservations.replaceChildren(...items);
+  analysisSummaryObservations.hidden = false;
+  analysisSummaryStatus.hidden = true;
+  delete analysisSummaryStatus.dataset.state;
+}
+
+/*
+ * Ask the dedicated endpoint for AI prose. It receives only the completed,
+ * server-built facts needed to explain the dashboard; it does not rerun
+ * YouTube collection or query expansion.
+ */
+async function requestAnalysisSummary(analysis, signal) {
+  const requestPayload = buildAnalysisSummaryRequest(analysis);
+
+  if (!requestPayload) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/analysis-summary", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestPayload),
+      signal,
+    });
+
+    const payload = await readJsonResponse(response);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return getUsableAnalysisSummary(analysis.niche, payload);
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * Start the optional summary after the dashboard is visible. A timeout keeps
+ * a slow provider from leaving the user with a permanent loading message.
+ */
+async function beginAnalysisSummary(analysis) {
+  cancelAnalysisSummaryRequest();
+  prepareAnalysisSummary();
+
+  const requestId = analysisSummaryRequestId;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, ANALYSIS_SUMMARY_TIMEOUT_MS);
+
+  analysisSummaryAbortController = controller;
+
+  try {
+    const summary = await requestAnalysisSummary(analysis, controller.signal);
+
+    if (requestId !== analysisSummaryRequestId || dashboardView.hidden) {
+      return;
+    }
+
+    if (!summary) {
+      showAnalysisSummaryUnavailable();
+      return;
+    }
+
+    renderAnalysisSummary(summary);
+  } finally {
+    window.clearTimeout(timeoutId);
+
+    if (requestId === analysisSummaryRequestId) {
+      analysisSummaryAbortController = null;
+    }
+  }
 }
 
 /*
@@ -1596,6 +1775,8 @@ function showDashboard(analysis) {
   reviewView.hidden = true;
   dashboardView.hidden = false;
 
+  void beginAnalysisSummary(analysis);
+
   window.scrollTo({
     top: 0,
     behavior: "smooth",
@@ -1610,6 +1791,7 @@ function showLanding({ clearInput = true } = {}) {
   isCheckingSpelling = false;
   isGeneratingQueries = false;
   clearSpellingSuggestion();
+  cancelAnalysisSummaryRequest();
 
   dashboardView.hidden = true;
   reviewView.hidden = true;

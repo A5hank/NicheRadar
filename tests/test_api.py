@@ -66,6 +66,24 @@ def client(
         app.dependency_overrides.clear()
 
 
+def summary_context_payload() -> dict[str, int | float]:
+    """Return a valid, favourable completed-analysis context."""
+
+    return {
+        "query_count": 5,
+        "videos_considered": 100,
+        "videos_returned": 50,
+        "videos_with_subscriber_data": 40,
+        "breakout_count": 4,
+        "breakout_channel_count": 3,
+        "exceptional_count": 1,
+        "unique_channel_count": 28,
+        "virality_score": 80,
+        "confidence_score": 88,
+        "median_views_per_day": 42_000.0,
+    }
+
+
 def test_health_check_returns_ok(
     client: TestClient,
 ) -> None:
@@ -90,6 +108,7 @@ def test_frontend_homepage_is_served(
     assert "NicheRadar" in response.text
     assert 'href="/about"' in response.text
     assert 'src="spelling-suggestion.js"' in response.text
+    assert 'src="analysis-summary.js"' in response.text
 
 
 def test_frontend_assets_are_served(
@@ -100,6 +119,7 @@ def test_frontend_assets_are_served(
     css_response = client.get("/styles.css")
     ranking_javascript_response = client.get("/result-ranking.js")
     spelling_javascript_response = client.get("/spelling-suggestion.js")
+    summary_javascript_response = client.get("/analysis-summary.js")
     javascript_response = client.get("/app.js")
     logo_response = client.get("/assets/nicheradar-mark.svg")
     about_css_response = client.get("/about.css")
@@ -108,6 +128,7 @@ def test_frontend_assets_are_served(
     assert css_response.status_code == 200
     assert ranking_javascript_response.status_code == 200
     assert spelling_javascript_response.status_code == 200
+    assert summary_javascript_response.status_code == 200
     assert javascript_response.status_code == 200
     assert logo_response.status_code == 200
     assert about_css_response.status_code == 200
@@ -358,6 +379,114 @@ def test_niche_spelling_endpoint_fails_open_without_groq(
         "suggestion": None,
     }
     groq_client.generate_json.assert_not_called()
+
+
+def test_analysis_summary_endpoint_returns_observations_and_creator_signal(
+    client: TestClient,
+    groq_client: Mock,
+    analysis_runner: Mock,
+) -> None:
+    """The summary endpoint uses completed facts without invoking YouTube analysis."""
+
+    groq_client.generate_json.return_value = {
+        "observations": [
+            "Current velocity shows active recent momentum.",
+            "The broad sample supports the confidence score.",
+            "Breakout activity spans multiple creators.",
+        ]
+    }
+
+    response = client.post(
+        "/api/analysis-summary",
+        json={
+            "niche": "Minecraft",
+            "summary_context": summary_context_payload(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "niche": "Minecraft",
+        "observations": [
+            "Current velocity shows active recent momentum.",
+            "The broad sample supports the confidence score.",
+            "Breakout activity spans multiple creators.",
+        ],
+        "new_creator_signal": {
+            "label": "favourable",
+            "rationale": (
+                "Recent breakouts span multiple creators, with enough coverage to support a "
+                "favourable current signal for new creators."
+            ),
+        },
+    }
+    groq_client.generate_json.assert_called_once()
+    analysis_runner.assert_not_called()
+
+
+def test_analysis_summary_endpoint_fails_open_when_groq_fails(
+    client: TestClient,
+    groq_client: Mock,
+    analysis_runner: Mock,
+) -> None:
+    """A failed optional summary must preserve its deterministic creator signal."""
+
+    groq_client.generate_json.side_effect = GroqAPIError("Could not connect to the Groq API.")
+
+    response = client.post(
+        "/api/analysis-summary",
+        json={
+            "niche": "Minecraft",
+            "summary_context": summary_context_payload(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["observations"] is None
+    assert response.json()["new_creator_signal"]["label"] == "favourable"
+    analysis_runner.assert_not_called()
+
+
+def test_analysis_summary_endpoint_fails_open_without_groq(
+    client: TestClient,
+    groq_client: Mock,
+) -> None:
+    """A missing Groq key must not turn a completed dashboard into an error."""
+
+    app.dependency_overrides[get_optional_groq_client] = lambda: None
+
+    response = client.post(
+        "/api/analysis-summary",
+        json={
+            "niche": "Minecraft",
+            "summary_context": summary_context_payload(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["observations"] is None
+    assert response.json()["new_creator_signal"]["label"] == "favourable"
+    groq_client.generate_json.assert_not_called()
+
+
+def test_analysis_summary_endpoint_rejects_contradictory_context(
+    client: TestClient,
+) -> None:
+    """The advisory endpoint still rejects impossible client-supplied facts."""
+
+    invalid_context = summary_context_payload()
+    invalid_context["breakout_channel_count"] = 5
+    invalid_context["breakout_count"] = 4
+
+    response = client.post(
+        "/api/analysis-summary",
+        json={
+            "niche": "Minecraft",
+            "summary_context": invalid_context,
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_query_endpoint_rejects_blank_niche(
@@ -634,6 +763,20 @@ def test_analysis_endpoint_returns_dashboard_data(
     assert payload["confidence_score"] == {
         "score": 70,
         "label": "good",
+    }
+
+    assert payload["summary_context"] == {
+        "query_count": 10,
+        "videos_considered": 76,
+        "videos_returned": 1,
+        "videos_with_subscriber_data": 1,
+        "breakout_count": 1,
+        "breakout_channel_count": 1,
+        "exceptional_count": 0,
+        "unique_channel_count": 1,
+        "virality_score": 30,
+        "confidence_score": 70,
+        "median_views_per_day": 125_000.0,
     }
 
 

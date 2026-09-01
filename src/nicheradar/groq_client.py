@@ -133,6 +133,7 @@ class GroqClient:
         response_schema: dict[str, object] | None = None,
         model: str | None = None,
         enable_web_search: bool = False,
+        reasoning_effort: str | None = None,
     ) -> dict[str, object]:
         """Ask Groq for a response containing one JSON object."""
 
@@ -143,6 +144,13 @@ class GroqClient:
 
         if not selected_model:
             raise ValueError("model must not be empty")
+
+        cleaned_reasoning_effort = (
+            reasoning_effort.strip() if reasoning_effort is not None else None
+        )
+
+        if reasoning_effort is not None and not cleaned_reasoning_effort:
+            raise ValueError("reasoning_effort must not be empty")
 
         response_format: dict[str, object] = {
             "type": "json_object",
@@ -182,6 +190,9 @@ class GroqClient:
                 },
             }
             request_payload["citation_options"] = "disabled"
+
+        if cleaned_reasoning_effort is not None:
+            request_payload["reasoning_effort"] = cleaned_reasoning_effort
 
         response = self._post_chat_completion(
             request_payload,

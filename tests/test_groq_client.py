@@ -94,6 +94,44 @@ def test_generate_json_raises_safe_api_error() -> None:
             )
 
 
+def test_generate_json_includes_requested_reasoning_effort() -> None:
+    """Call-specific reasoning controls should reach Groq without changing defaults."""
+
+    def handler(
+        request: httpx.Request,
+    ) -> httpx.Response:
+        request_payload = json.loads(request.content)
+
+        assert request_payload["reasoning_effort"] == "low"
+
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "content": json.dumps({"result": "ok"}),
+                        }
+                    }
+                ]
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with GroqClient(
+        "test-groq-key",
+        transport=transport,
+    ) as client:
+        result = client.generate_json(
+            system_prompt="Return JSON.",
+            user_prompt="Summarize.",
+            reasoning_effort="low",
+        )
+
+    assert result == {"result": "ok"}
+
+
 def test_generate_json_can_use_one_compound_web_search() -> None:
     """A web-assisted request must use Compound Mini and its single search tool."""
 

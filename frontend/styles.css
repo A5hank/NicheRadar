@@ -726,11 +726,6 @@ button {
   text-transform: capitalize;
 }
 
-.dashboard-header > div > p:last-child {
-  margin: 1rem 0 0;
-  color: var(--muted);
-}
-
 .mobile-new-analysis {
   display: none;
   padding: 0.75rem 1rem;
@@ -1089,6 +1084,144 @@ button {
 
 .score-breakdown[open] .breakdown-chevron {
   transform: rotate(180deg);
+}
+
+/*
+ * AI summary
+ *
+ * This follows the score panel's calm, full-width card treatment while
+ * keeping AI interpretation visually distinct from deterministic scoring.
+ */
+.analysis-summary-panel {
+  --summary-signal-color: var(--breakout);
+
+  margin-top: 1.25rem;
+  padding: 1.6rem 1.7rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+}
+
+.analysis-summary-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.analysis-summary-heading-row .eyebrow {
+  margin-bottom: 0.62rem;
+}
+
+.analysis-summary-heading-row h2 {
+  margin: 0;
+  font-size: clamp(1.18rem, 2.2vw, 1.5rem);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.analysis-summary-status {
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.analysis-summary-status[data-state="unavailable"] {
+  color: var(--muted);
+}
+
+#analysis-summary-observations {
+  display: grid;
+  padding: 0;
+  margin: 1.25rem 0 0;
+  gap: 0.7rem;
+  list-style: none;
+}
+
+#analysis-summary-observations li {
+  position: relative;
+  padding-left: 1.25rem;
+  color: var(--muted);
+  font-size: 0.91rem;
+  line-height: 1.58;
+}
+
+#analysis-summary-observations li::before {
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 0.48rem;
+  height: 0.48rem;
+  background: var(--summary-signal-color);
+  border-radius: 50%;
+  content: "";
+}
+
+.analysis-summary-panel[data-signal="favourable"] {
+  --summary-signal-color: var(--exceptional-text);
+}
+
+.analysis-summary-panel[data-signal="mixed"] {
+  --summary-signal-color: var(--breakout-text);
+}
+
+.analysis-summary-panel[data-signal="limited"] {
+  --summary-signal-color: var(--confidence-text);
+}
+
+.analysis-summary-panel[data-signal="insufficient_evidence"] {
+  --summary-signal-color: var(--muted);
+}
+
+.new-creator-signal {
+  margin-top: 1.3rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+
+.new-creator-signal .eyebrow {
+  margin-bottom: 0.45rem;
+}
+
+.new-creator-signal > p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.new-creator-signal strong {
+  color: var(--ink);
+}
+
+.new-creator-signal strong::after {
+  color: var(--muted);
+  content: " — ";
+  font-weight: 500;
+}
+
+.new-creator-signal[data-signal="favourable"] strong {
+  color: var(--exceptional-text);
+}
+
+.new-creator-signal[data-signal="mixed"] strong {
+  color: var(--breakout-text);
+}
+
+.new-creator-signal[data-signal="limited"] strong {
+  color: var(--confidence-text);
+}
+
+.new-creator-signal[data-signal="insufficient_evidence"] strong {
+  color: var(--muted);
+}
+
+.analysis-summary-disclaimer {
+  margin: 1.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 /*
