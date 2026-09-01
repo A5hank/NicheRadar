@@ -40,7 +40,7 @@
     </script>
 
     <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/about.css" />
+    <link rel="stylesheet" href="/about.css?v=1.0.4" />
     <script src="/about.js" defer></script>
   </head>
 
@@ -113,10 +113,10 @@
         </h1>
 
         <p class="about-hero-copy">
-          NicheRadar turns public YouTube Shorts metadata into a
-          focused picture of what is gaining traction, which creators
-          are outperforming their size, and whether recent results
-          suggest an opportunity worth researching.
+          NicheRadar turns recent public YouTube Shorts metadata into a
+          clear research snapshot: what is gaining traction, which
+          creators are outperforming their size, and how much evidence
+          supports the current signal.
         </p>
       </section>
 
@@ -160,11 +160,11 @@
       >
         <div class="about-section-heading">
           <p class="eyebrow">The project</p>
-          <h2>YouTube Shorts research without the guesswork.</h2>
+          <h2>Research a niche before you commit to it.</h2>
           <p>
-            NicheRadar combines focused searches, real performance
-            statistics and transparent analytical signals into one
-            ranked report.
+            It helps creators move beyond a vague hunch by combining a
+            reviewable search plan, recent public YouTube data and
+            transparent, deterministic scoring in one ranked report.
           </p>
         </div>
 
@@ -173,10 +173,11 @@
             <span class="about-feature-number" aria-hidden="true">
               01
             </span>
-            <h3>Shape the search</h3>
+            <h3>Start with a clean search</h3>
             <p>
-              A niche is expanded into focused search angles that the
-              user can review, remove or replace before analysis.
+              A likely spelling issue can be suggested before expansion,
+              but NicheRadar never silently changes the niche a user
+              entered.
             </p>
           </article>
 
@@ -184,11 +185,11 @@
             <span class="about-feature-number" aria-hidden="true">
               02
             </span>
-            <h3>Compare real performance</h3>
+            <h3>Review the search plan</h3>
             <p>
-              Public views, upload age and channel size are converted
-              into comparable signals such as views per day and
-              subscriber multiplier.
+              An AI service proposes focused YouTube search angles. The
+              user can edit, remove or add queries before any YouTube
+              analysis starts.
             </p>
           </article>
 
@@ -196,56 +197,214 @@
             <span class="about-feature-number" aria-hidden="true">
               03
             </span>
-            <h3>Spot unusual traction</h3>
+            <h3>Compare current performance</h3>
             <p>
-              Breakout and exceptional-performance highlights reveal
-              videos performing unusually well for their channels.
+              Recent public views, upload age and channel size become
+              comparable measures such as Views/day and Subscriber
+              multiplier.
             </p>
           </article>
         </div>
 
-        <div class="about-detail-grid">
+        <section class="about-explainer" aria-labelledby="process-title">
+          <div class="about-subsection-heading">
+            <p class="eyebrow">Method</p>
+            <h3 id="process-title">How an analysis is built</h3>
+            <p>
+              AI helps prepare and explain the research, while the video
+              collection, ranking and scores remain deterministic.
+            </p>
+          </div>
+
+          <ol class="about-process-list">
+            <li class="about-process-step">
+              <span class="about-process-number" aria-hidden="true">01</span>
+              <h4>Check the niche</h4>
+              <p>
+                An optional, high-confidence spelling suggestion is shown
+                first. Keeping the original niche always remains a choice.
+              </p>
+            </li>
+
+            <li class="about-process-step">
+              <span class="about-process-number" aria-hidden="true">02</span>
+              <h4>Expand and review</h4>
+              <p>
+                Groq generates up to ten concise search queries; the
+                original niche stays locked as the first query.
+              </p>
+            </li>
+
+            <li class="about-process-step">
+              <span class="about-process-number" aria-hidden="true">03</span>
+              <h4>Collect and rank</h4>
+              <p>
+                NicheRadar searches recent public YouTube data, removes
+                duplicates, keeps Short candidates and calculates each
+                metric from the returned metadata.
+              </p>
+            </li>
+
+            <li class="about-process-step">
+              <span class="about-process-number" aria-hidden="true">04</span>
+              <h4>Explain the result</h4>
+              <p>
+                After the dashboard is ready, an optional Groq summary
+                turns completed statistics into three observations. It
+                never reruns YouTube collection.
+              </p>
+            </li>
+          </ol>
+        </section>
+
+        <section class="about-explainer" aria-labelledby="signals-title">
+          <div class="about-subsection-heading">
+            <p class="eyebrow">The signals</p>
+            <h3 id="signals-title">How to read a report</h3>
+            <p>
+              These labels make the scoring model inspectable rather than
+              treating the dashboard as a black box.
+            </p>
+          </div>
+
+          <div class="about-signal-grid">
+            <article class="about-signal-card about-signal-card-breakout">
+              <h4>Breakout</h4>
+              <p>
+                A smaller or growth-stage channel whose video clears the
+                view-to-subscriber threshold set for its channel-size band.
+              </p>
+            </article>
+
+            <article class="about-signal-card about-signal-card-exceptional">
+              <h4>Exceptional</h4>
+              <p>
+                A larger channel with a video that has more than 40 views
+                per subscriber, indicating unusually strong reach for its
+                size.
+              </p>
+            </article>
+
+            <article class="about-signal-card about-signal-card-virality">
+              <h4>Virality Score</h4>
+              <p>
+                A deterministic 0–100 score for current activity, using
+                breakouts, median Views/day, exceptional highlights and
+                channel diversity.
+              </p>
+            </article>
+
+            <article class="about-signal-card about-signal-card-confidence">
+              <h4>Confidence Score</h4>
+              <p>
+                A deterministic 0–100 measure of evidence strength from
+                query breadth, candidate and result counts, and subscriber
+                data coverage.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section
+          class="about-explainer about-report-controls-section"
+          aria-labelledby="report-controls-title"
+        >
+          <div class="about-subsection-heading">
+            <p class="eyebrow">Report controls</p>
+            <h3 id="report-controls-title">Inspect the same results your way</h3>
+          </div>
+          <ul class="about-list about-report-controls-list">
+            <li>Up to 50 ranked Short candidates from the completed analysis</li>
+            <li>Client-side ranking by Views/day, Total views or Subscriber multiplier</li>
+            <li>Breakout and exceptional-performance highlights</li>
+            <li>Three optional AI observations and a deterministic New-Creator Signal</li>
+          </ul>
+        </section>
+
+        <section
+          class="about-explainer about-project-details-section"
+          aria-labelledby="project-details-title"
+        >
+          <div class="about-subsection-heading">
+            <p class="eyebrow">Context</p>
+            <h3 id="project-details-title">Project details</h3>
+            <p>
+              The stack behind the product, the limits of the available
+              data and the source code that keeps the project inspectable.
+            </p>
+          </div>
+
+          <div class="about-project-details-grid">
           <article class="about-detail-card">
-            <p class="eyebrow">What it provides</p>
-            <h3>A focused niche snapshot</h3>
-            <ul class="about-list">
-              <li>Up to 50 high-view candidates, displayed by views per day</li>
-              <li>Breakout and exceptional-performance highlights</li>
-              <li>Niche virality and confidence scores</li>
-              <li>Channel, thumbnail and performance metadata</li>
+            <p class="eyebrow">Built with</p>
+            <h3>An end-to-end product stack</h3>
+            <ul class="technology-list" aria-label="Technologies used">
+              <li>Python</li>
+              <li>FastAPI</li>
+              <li>SQLAlchemy</li>
+              <li>SQLite</li>
+              <li>Groq</li>
+              <li>YouTube Data API</li>
+              <li>HTML</li>
+              <li>CSS</li>
+              <li>JavaScript</li>
+              <li>Podman</li>
             </ul>
           </article>
 
           <article class="about-detail-card">
-            <p class="eyebrow">Built with</p>
-            <h3>An end-to-end product stack</h3>
-            <div class="technology-list" aria-label="Technologies used">
-              <span>Python</span>
-              <span>FastAPI</span>
-              <span>SQLAlchemy</span>
-              <span>SQLite</span>
-              <span>Groq</span>
-              <span>YouTube Data API</span>
-              <span>HTML</span>
-              <span>CSS</span>
-              <span>JavaScript</span>
-              <span>Podman</span>
+            <p class="eyebrow">Data and limitations</p>
+            <h3>A useful snapshot, with clear boundaries</h3>
+            <ul class="about-list">
+              <li>Uses public metadata supplied through the YouTube Data API.</li>
+              <li>Does not analyse video frames, audio, transcripts, watch time or retention.</li>
+              <li>Results are time-bound, query-dependent and affected by available API data and quota.</li>
+              <li>Missing subscriber data can make a multiplier unavailable.</li>
+            </ul>
+          </article>
+
+          <article class="about-detail-card">
+            <p class="eyebrow">Open source</p>
+            <h3>Licensed under GPLv3</h3>
+            <p class="about-card-copy">
+              NicheRadar is free software under the GNU General Public
+              License v3.0. Its source code is available on GitHub.
+            </p>
+            <div class="about-inline-links">
+              <a
+                class="about-inline-link"
+                href="https://github.com/A5hank/NicheRadar"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View source on GitHub <span aria-hidden="true">&nearr;</span>
+              </a>
+              <a
+                class="about-inline-link"
+                href="https://github.com/A5hank/NicheRadar/blob/main/LICENSE"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Read the GPLv3 license <span aria-hidden="true">&nearr;</span>
+              </a>
             </div>
           </article>
-        </div>
-
-        <aside class="about-note">
-          <div>
-            <p class="eyebrow">Scope</p>
-            <h3>Metadata intelligence, not a guarantee of success.</h3>
           </div>
-          <p>
-            NicheRadar analyses public metadata rather than video
-            content. Its scores are research signals designed to support
-            creator decisions, not predictions of future performance.
-            NicheRadar is not affiliated with YouTube.
+        </section>
+
+        <section class="about-explainer about-scope-section" aria-labelledby="scope-title">
+          <div class="about-subsection-heading">
+            <p class="eyebrow">Scope</p>
+            <h3 id="scope-title">Research support, not a guarantee of success.</h3>
+          </div>
+          <p class="about-scope-copy">
+            NicheRadar uses public YouTube data and an AI service for
+            query expansion and optional summaries. It is an independent
+            project, not affiliated with or endorsed by YouTube or Google.
+            Its scores and summaries support research; they do not
+            guarantee growth, virality, income or future performance.
           </p>
-        </aside>
+        </section>
       </section>
 
       <section
@@ -259,19 +418,19 @@
       >
         <div class="developer-profile">
           <div class="developer-monogram" aria-hidden="true">
-            AS
+            AKS
           </div>
 
           <div class="developer-introduction">
             <p class="eyebrow">The developer</p>
             <h2>Ashank Kumar Singh</h2>
             <p class="developer-role">
-              Computer Science student and AI engineering builder
+              Computer Science student and AI Engineering builder
             </p>
 
             <p>
               I am a third-year Computer Science student interested in
-              AI engineering, backend systems and building practical,
+              AI Engineering, Agentic AI and building practical,
               data-driven products.
             </p>
 
@@ -307,15 +466,13 @@
         </div>
 
         <div class="developer-interests">
-          <p class="eyebrow">Currently exploring</p>
+          <p class="eyebrow">Areas of Focus</p>
 
-          <div class="technology-list">
-            <span>AI engineering</span>
-            <span>RAG systems</span>
-            <span>Agentic AI</span>
-            <span>Backend engineering</span>
-            <span>Applied machine learning</span>
-          </div>
+          <ul class="technology-list">
+            <li>AI Engineering</li>
+            <li>RAG Systems</li>
+            <li>Agentic AI</li>
+          </ul>
         </div>
       </section>
     </main>
