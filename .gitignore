@@ -34,3 +34,7 @@ htmlcov/
 Thumbs.db
 .vercel
 .env*
+
+# Vercel Marketplace agent-reference files
+.agents/
+skills-lock.json

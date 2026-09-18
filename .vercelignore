@@ -16,3 +16,7 @@ htmlcov/
 # Local editor configuration
 .vscode/
 .idea/
+
+# Vercel Marketplace agent-reference files
+.agents/
+skills-lock.json
