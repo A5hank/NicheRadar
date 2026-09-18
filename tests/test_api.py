@@ -107,6 +107,16 @@ def test_health_check_returns_ok(
     }
 
 
+def test_retention_cleanup_endpoint_uses_get_and_requires_the_cron_secret(
+    client: TestClient,
+) -> None:
+    """Vercel Cron invokes the protected retention route with a GET request."""
+
+    response = client.get("/api/internal/retention")
+
+    assert response.status_code == 404
+
+
 def test_frontend_homepage_is_served(
     client: TestClient,
 ) -> None:

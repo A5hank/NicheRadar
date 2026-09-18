@@ -952,7 +952,7 @@ def analyze_niche(
     )
 
 
-@app.post(
+@app.get(
     "/api/internal/retention",
     tags=["system"],
 )
