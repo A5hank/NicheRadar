@@ -1,6 +1,7 @@
 """Client utilities for the YouTube Data API."""
 
 import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import unescape
@@ -32,6 +33,10 @@ _DURATION_PATTERN = re.compile(
 
 class YouTubeAPIError(RuntimeError):
     """Raised when a YouTube Data API request fails."""
+
+
+class YouTubeDeadlineExceededError(YouTubeAPIError):
+    """Raised before an upstream request would exceed the analysis deadline."""
 
 
 class YouTubeMetadataError(ValueError):
@@ -298,6 +303,7 @@ class YouTubeClient:
         api_key: str,
         *,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+        deadline_monotonic: float | None = None,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
         cleaned_api_key = api_key.strip()
@@ -305,7 +311,12 @@ class YouTubeClient:
         if not cleaned_api_key:
             raise ValueError("api_key must not be empty")
 
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be greater than zero")
+
         self._api_key = cleaned_api_key
+        self._timeout_seconds = timeout_seconds
+        self._deadline_monotonic = deadline_monotonic
         self._client = httpx.Client(
             base_url=YOUTUBE_API_BASE_URL,
             timeout=timeout_seconds,
@@ -345,11 +356,24 @@ class YouTubeClient:
             "key": self._api_key,
         }
 
+        timeout_seconds = self._timeout_seconds
+
+        if self._deadline_monotonic is not None:
+            remaining_seconds = self._deadline_monotonic - time.monotonic()
+
+            if remaining_seconds <= 0:
+                raise YouTubeDeadlineExceededError("Analysis request timed out.")
+
+            timeout_seconds = min(timeout_seconds, remaining_seconds)
+
         try:
             response = self._client.get(
                 endpoint,
                 params=request_params,
+                timeout=timeout_seconds,
             )
+        except httpx.TimeoutException:
+            raise YouTubeDeadlineExceededError("YouTube request timed out.") from None
         except httpx.RequestError:
             raise YouTubeAPIError("Unable to reach the YouTube Data API.") from None
 

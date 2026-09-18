@@ -11,7 +11,7 @@ from nicheradar.database import (
     create_database_schema,
     create_session_factory,
 )
-from nicheradar.models import Channel, Snapshot, Video
+from nicheradar.models import AnalysisRun, AnalysisSnapshot, AnalysisVideo
 from nicheradar.youtube import YouTubeClient
 
 
@@ -175,10 +175,12 @@ def test_collection_saves_valid_short_candidates() -> None:
                 )
 
         with session_factory() as session:
-            stored_video = session.scalar(select(Video))
-            stored_channel = session.scalar(select(Channel))
-            stored_snapshot = session.scalar(select(Snapshot))
+            stored_run = session.scalar(select(AnalysisRun))
+            stored_video = session.scalar(select(AnalysisVideo))
+            stored_snapshot = session.scalar(select(AnalysisSnapshot))
 
+            assert stored_run is not None
+            assert stored_run.id == summary.analysis_run_id
             assert stored_video is not None
             assert stored_video.video_id == "short-video"
             assert stored_video.views == 800_000
@@ -188,9 +190,6 @@ def test_collection_saves_valid_short_candidates() -> None:
                 "productivity",
             ]
             assert stored_video.thumbnail_url == ("https://images.example/short-video-medium.jpg")
-
-            assert stored_channel is not None
-            assert stored_channel.video_count == 120
 
             assert stored_snapshot is not None
             assert stored_snapshot.video_count == 1

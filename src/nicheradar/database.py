@@ -46,7 +46,11 @@ def create_session_factory(
 
 
 def create_database_schema(engine: Engine) -> None:
-    """Create every missing NicheRadar database table."""
+    """Create every missing table for isolated unit tests only.
+
+    Runtime environments must use the controlled Alembic migration command
+    rather than calling this helper during requests.
+    """
 
     Base.metadata.create_all(engine)
 

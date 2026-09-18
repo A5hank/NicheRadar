@@ -1,6 +1,7 @@
 """SQLAlchemy ORM models for NicheRadar."""
 
 from datetime import UTC, date, datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -233,3 +234,141 @@ class Snapshot(Base):
     median_views: Mapped[float] = mapped_column(
         Float,
     )
+
+
+def generate_analysis_run_id() -> str:
+    """Return an opaque identifier for one isolated analysis run."""
+
+    return str(uuid4())
+
+
+class AnalysisRun(Base):
+    """One immutable completed or in-progress niche analysis."""
+
+    __tablename__ = "analysis_runs"
+    __table_args__ = (
+        Index("ix_analysis_runs_expires_at", "expires_at"),
+        Index("ix_analysis_runs_fingerprint", "query_fingerprint"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=generate_analysis_run_id,
+    )
+    niche: Mapped[str] = mapped_column(String(255))
+    query_fingerprint: Mapped[str] = mapped_column(String(64))
+    approved_queries: Mapped[list[str]] = mapped_column(JSON, default=list)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    videos: Mapped[list["AnalysisVideo"]] = relationship(
+        back_populates="analysis_run",
+        cascade="all, delete-orphan",
+    )
+    snapshot: Mapped["AnalysisSnapshot | None"] = relationship(
+        back_populates="analysis_run",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+
+class AnalysisVideo(Base):
+    """A video observation belonging only to one analysis run."""
+
+    __tablename__ = "analysis_videos"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_run_id",
+            "video_id",
+            name="uq_analysis_video_run_video",
+        ),
+        CheckConstraint("views >= 0", name="non_negative_analysis_video_views"),
+        CheckConstraint(
+            "subscribers IS NULL OR subscribers >= 0",
+            name="non_negative_analysis_video_subscribers",
+        ),
+        CheckConstraint(
+            "duration_seconds >= 0",
+            name="non_negative_analysis_video_duration",
+        ),
+        Index("ix_analysis_videos_run_views", "analysis_run_id", "views"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    analysis_run_id: Mapped[str] = mapped_column(
+        ForeignKey("analysis_runs.id", ondelete="CASCADE"),
+    )
+    video_id: Mapped[str] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(Text)
+    url: Mapped[str] = mapped_column(String(500))
+    thumbnail_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    channel_id: Mapped[str] = mapped_column(String(64))
+    channel_name: Mapped[str] = mapped_column(String(255))
+    views: Mapped[int] = mapped_column(BigInteger)
+    likes: Mapped[int | None] = mapped_column(BigInteger)
+    comments: Mapped[int | None] = mapped_column(BigInteger)
+    subscribers: Mapped[int | None] = mapped_column(BigInteger)
+    duration_seconds: Mapped[int] = mapped_column()
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    upload_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    analysis_run: Mapped[AnalysisRun] = relationship(back_populates="videos")
+
+
+class AnalysisSnapshot(Base):
+    """Aggregate metrics calculated from exactly one analysis run."""
+
+    __tablename__ = "analysis_snapshots"
+    __table_args__ = (
+        UniqueConstraint("analysis_run_id", name="uq_analysis_snapshot_run"),
+        CheckConstraint("video_count >= 0", name="non_negative_analysis_snapshot_video_count"),
+        CheckConstraint(
+            "average_views >= 0",
+            name="non_negative_analysis_snapshot_average_views",
+        ),
+        CheckConstraint(
+            "median_views >= 0",
+            name="non_negative_analysis_snapshot_median_views",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    analysis_run_id: Mapped[str] = mapped_column(
+        ForeignKey("analysis_runs.id", ondelete="CASCADE"),
+        index=True,
+    )
+    video_count: Mapped[int] = mapped_column()
+    average_views: Mapped[float] = mapped_column(Float)
+    median_views: Mapped[float] = mapped_column(Float)
+
+    analysis_run: Mapped[AnalysisRun] = relationship(back_populates="snapshot")
+
+
+class AnalysisLock(Base):
+    """A short-lived cross-instance lock for one normalized analysis request."""
+
+    __tablename__ = "analysis_locks"
+
+    fingerprint: Mapped[str] = mapped_column(String(64), primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class YouTubeDailyBudget(Base):
+    """Durable count of reserved YouTube searches for one UTC day."""
+
+    __tablename__ = "youtube_daily_budgets"
+
+    budget_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    searches_reserved: Mapped[int] = mapped_column(default=0)
+
+
+class RequestRateLimit(Base):
+    """A fixed-window, pseudonymous client rate-limit counter."""
+
+    __tablename__ = "request_rate_limits"
+
+    endpoint: Mapped[str] = mapped_column(String(64), primary_key=True)
+    client_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    request_count: Mapped[int] = mapped_column(default=0)

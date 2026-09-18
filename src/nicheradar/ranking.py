@@ -7,7 +7,7 @@ from nicheradar.analytics import (
     PerformanceMetrics,
     calculate_performance_metrics,
 )
-from nicheradar.models import Video
+from nicheradar.models import AnalysisVideo, Video
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,14 +27,19 @@ class ScoredVideo:
 
 
 def score_video(
-    video: Video,
+    video: Video | AnalysisVideo,
     *,
     as_of: datetime,
 ) -> ScoredVideo:
     """Calculate analytics for one stored video."""
 
-    if video.channel is None:
-        raise ValueError(f"Video {video.video_id} has no channel.")
+    if isinstance(video, AnalysisVideo):
+        channel_name = video.channel_name
+    else:
+        if video.channel is None:
+            raise ValueError(f"Video {video.video_id} has no channel.")
+
+        channel_name = video.channel.channel_name
 
     metrics = calculate_performance_metrics(
         views=video.views,
@@ -50,7 +55,7 @@ def score_video(
         title=video.title,
         url=video.url,
         channel_id=video.channel_id,
-        channel_name=video.channel.channel_name,
+        channel_name=channel_name,
         upload_date=video.upload_date,
         views=video.views,
         subscribers=video.subscribers,
@@ -83,7 +88,7 @@ def rank_scored_videos(
 
 
 def rank_videos(
-    videos: list[Video],
+    videos: list[Video | AnalysisVideo],
     *,
     as_of: datetime,
     limit: int | None = 50,

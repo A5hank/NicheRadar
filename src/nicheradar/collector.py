@@ -8,9 +8,9 @@ from statistics import mean, median
 from sqlalchemy.orm import Session
 
 from nicheradar.repositories import (
-    upsert_channel,
-    upsert_snapshot,
-    upsert_video_observation,
+    create_analysis_run,
+    save_analysis_snapshot,
+    save_analysis_video,
 )
 from nicheradar.youtube import YouTubeClient
 
@@ -21,6 +21,7 @@ SEARCH_WINDOW_DAYS = 7
 class CollectionSummary:
     """Summary of one completed niche collection."""
 
+    analysis_run_id: str
     niche: str
     search_queries: tuple[str, ...]
     searched_count: int
@@ -74,6 +75,8 @@ def collect_niche(
     niche: str,
     search_queries: Sequence[str] | None = None,
     collected_at: datetime | None = None,
+    query_fingerprint: str = "local",
+    expires_at: datetime | None = None,
     max_results: int = 50,
 ) -> CollectionSummary:
     """Collect recent YouTube data and stage it for storage."""
@@ -94,8 +97,11 @@ def collect_niche(
         raise ValueError("collected_at must be timezone-aware")
 
     current_time = current_time.astimezone(UTC)
-    collection_date = current_time.date()
     published_after = current_time - timedelta(days=SEARCH_WINDOW_DAYS)
+    retention_deadline = expires_at or (current_time + timedelta(days=30))
+
+    if retention_deadline.tzinfo is None or retention_deadline.utcoffset() is None:
+        raise ValueError("expires_at must be timezone-aware")
 
     searched_count = 0
     video_ids: list[str] = []
@@ -136,29 +142,27 @@ def collect_niche(
 
         valid_pairs.append((video, channel))
 
-    used_channel_ids = {video.channel_id for video, _channel in valid_pairs}
-
-    for channel_id in used_channel_ids:
-        channel = channels_by_id[channel_id]
-
-        upsert_channel(
-            session,
-            channel_id=channel.channel_id,
-            channel_name=channel.channel_title,
-            subscriber_count=channel.subscriber_count,
-            video_count=channel.video_count,
-        )
+    analysis_run = create_analysis_run(
+        session,
+        niche=cleaned_niche,
+        query_fingerprint=query_fingerprint,
+        approved_queries=prepared_search_queries,
+        collected_at=current_time,
+        expires_at=retention_deadline.astimezone(UTC),
+    )
 
     saved_views: list[int] = []
 
     for video, channel in valid_pairs:
-        upsert_video_observation(
+        save_analysis_video(
             session,
+            analysis_run_id=analysis_run.id,
             video_id=video.video_id,
             title=video.title,
             url=video.url,
             thumbnail_url=video.thumbnail_url,
             channel_id=video.channel_id,
+            channel_name=channel.channel_title,
             views=video.view_count,
             likes=video.like_count,
             comments=video.comment_count,
@@ -166,23 +170,21 @@ def collect_niche(
             duration_seconds=video.duration_seconds,
             tags=video.tags,
             upload_date=video.published_at,
-            niche=cleaned_niche,
-            collected_date=collection_date,
         )
 
         saved_views.append(video.view_count)
 
     if saved_views:
-        upsert_snapshot(
+        save_analysis_snapshot(
             session,
-            niche=cleaned_niche,
-            snapshot_date=collection_date,
+            analysis_run_id=analysis_run.id,
             video_count=len(saved_views),
             average_views=float(mean(saved_views)),
             median_views=float(median(saved_views)),
         )
 
     return CollectionSummary(
+        analysis_run_id=analysis_run.id,
         niche=cleaned_niche,
         search_queries=prepared_search_queries,
         searched_count=searched_count,

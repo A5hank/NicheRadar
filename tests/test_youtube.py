@@ -1,5 +1,6 @@
 """Tests for the YouTube Data API client."""
 
+import time
 from datetime import UTC, datetime
 
 import httpx
@@ -8,6 +9,7 @@ import pytest
 from nicheradar.youtube import (
     YouTubeAPIError,
     YouTubeClient,
+    YouTubeDeadlineExceededError,
     YouTubeMetadataError,
     format_rfc3339_utc,
     parse_iso8601_duration,
@@ -40,6 +42,20 @@ def test_rfc3339_rejects_naive_datetime() -> None:
         match="timezone-aware",
     ):
         format_rfc3339_utc(value)
+
+
+def test_client_rejects_work_after_analysis_deadline() -> None:
+    """A timed-out analysis must stop before starting another YouTube request."""
+
+    with YouTubeClient(
+        "test-api-key",
+        deadline_monotonic=time.monotonic() - 1,
+    ) as client:
+        with pytest.raises(YouTubeDeadlineExceededError):
+            client.search_video_ids(
+                query="Minecraft",
+                published_after=datetime(2026, 9, 17, tzinfo=UTC),
+            )
 
 
 def test_thumbnail_selector_prefers_medium_size() -> None:

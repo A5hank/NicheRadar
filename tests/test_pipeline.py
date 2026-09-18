@@ -11,7 +11,7 @@ from nicheradar.database import (
     create_database_schema,
     create_session_factory,
 )
-from nicheradar.models import Video
+from nicheradar.models import AnalysisVideo
 from nicheradar.pipeline import run_niche_analysis
 from nicheradar.youtube import YouTubeClient
 
@@ -154,9 +154,11 @@ def test_pipeline_collects_scores_and_selects_videos() -> None:
         assert video.metrics.performance_label is PerformanceLabel.BREAKOUT
 
         with session_factory() as session:
-            stored_video = session.scalar(select(Video).where(Video.video_id == "video-123"))
+            stored_video = session.scalar(
+                select(AnalysisVideo).where(AnalysisVideo.video_id == "video-123")
+            )
 
-            assert stored_video is not None
-            assert stored_video.views == 250_000
+        assert stored_video is not None
+        assert stored_video.views == 250_000
     finally:
         engine.dispose()

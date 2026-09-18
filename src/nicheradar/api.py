@@ -1,18 +1,22 @@
 """HTTP API and frontend server for NicheRadar."""
 
 import logging
+import secrets
+import time
 from collections.abc import (
     Callable,
     Iterator,
 )
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import (
     Depends,
     FastAPI,
+    Header,
     HTTPException,
+    Request,
     status,
 )
 from fastapi.responses import FileResponse
@@ -28,13 +32,13 @@ from nicheradar.analytics import PerformanceLabel
 from nicheradar.config import get_settings
 from nicheradar.database import (
     create_database_engine,
-    create_database_schema,
     create_session_factory,
 )
 from nicheradar.groq_client import (
     GroqAPIError,
     GroqClient,
 )
+from nicheradar.logging_utils import configure_structured_logging
 from nicheradar.niche_spelling import (
     NicheSpellingError,
     check_niche_spelling,
@@ -47,8 +51,21 @@ from nicheradar.niche_summary import (
     determine_new_creator_signal,
     generate_niche_summary,
 )
+from nicheradar.operations import (
+    DuplicateAnalysisError,
+    RateLimitExceededError,
+    YouTubeBudgetExceededError,
+    acquire_analysis_lock,
+    cleanup_expired_records,
+    client_key_from_address,
+    consume_rate_limit,
+    release_analysis_lock,
+    reserve_youtube_search_budget,
+    utc_now,
+)
 from nicheradar.pipeline import (
     NicheAnalysis,
+    build_analysis_fingerprint,
     run_niche_analysis,
 )
 from nicheradar.query_expansion import (
@@ -69,8 +86,9 @@ from nicheradar.virality import (
     calculate_confidence_score,
     calculate_virality_score,
 )
-from nicheradar.youtube import YouTubeClient
+from nicheradar.youtube import YouTubeClient, YouTubeDeadlineExceededError
 
+configure_structured_logging()
 LOGGER = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -407,6 +425,67 @@ AnalysisRunner = Callable[
     [AnalysisRequest],
     NicheAnalysis,
 ]
+EndpointGuard = Callable[[str, Request], None]
+
+
+def _request_client_key(request: Request) -> str:
+    """Return a pseudonymous identifier from Vercel's forwarded address."""
+
+    forwarded_for = request.headers.get("x-forwarded-for")
+
+    if forwarded_for:
+        address = forwarded_for.split(",", maxsplit=1)[0]
+    elif request.client is not None:
+        address = request.client.host
+    else:
+        address = None
+
+    return client_key_from_address(address)
+
+
+def enforce_endpoint_rate_limit(endpoint: str, request: Request) -> None:
+    """Apply a durable per-client rate limit before assistive API calls."""
+
+    settings = get_settings()
+    limit = (
+        settings.analysis_rate_limit_per_minute
+        if endpoint == "analysis"
+        else settings.rate_limit_per_minute
+    )
+    engine = create_database_engine(settings.database_url)
+
+    try:
+        session_factory = create_session_factory(engine)
+
+        with session_factory.begin() as session:
+            consume_rate_limit(
+                session,
+                endpoint=endpoint,
+                client_key=_request_client_key(request),
+                limit=limit,
+            )
+    except RateLimitExceededError as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Please wait a minute and try again.",
+        ) from error
+    except SQLAlchemyError as error:
+        LOGGER.error(
+            "Operational rate-limit storage is unavailable.",
+            extra={"event": "rate_limit_storage_unavailable", "endpoint": endpoint},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="NicheRadar is temporarily unavailable.",
+        ) from error
+    finally:
+        engine.dispose()
+
+
+def get_endpoint_guard() -> EndpointGuard:
+    """Provide the durable request guard while keeping API tests injectable."""
+
+    return enforce_endpoint_rate_limit
 
 
 def get_groq_client() -> Iterator[GroqClient]:
@@ -420,7 +499,10 @@ def get_groq_client() -> Iterator[GroqClient]:
             detail="Groq API key is not configured.",
         )
 
-    with GroqClient(settings.groq_api_key) as groq_client:
+    with GroqClient(
+        settings.groq_api_key,
+        timeout=settings.groq_timeout_seconds,
+    ) as groq_client:
         yield groq_client
 
 
@@ -433,7 +515,10 @@ def get_optional_groq_client() -> Iterator[GroqClient | None]:
         yield None
         return
 
-    with GroqClient(settings.groq_api_key) as groq_client:
+    with GroqClient(
+        settings.groq_api_key,
+        timeout=settings.groq_timeout_seconds,
+    ) as groq_client:
         yield groq_client
 
 
@@ -453,17 +538,44 @@ def execute_niche_analysis(
     engine = create_database_engine(settings.database_url)
 
     try:
-        create_database_schema(engine)
         session_factory = create_session_factory(engine)
+        fingerprint = build_analysis_fingerprint(
+            niche=request.niche,
+            search_queries=request.queries,
+        )
+        lock_expires_at = utc_now() + timedelta(seconds=settings.analysis_timeout_seconds + 15)
 
-        with YouTubeClient(settings.youtube_api_key) as youtube_client:
+        with session_factory.begin() as session:
+            cleanup_expired_records(session)
+            acquire_analysis_lock(
+                session,
+                fingerprint=fingerprint,
+                expires_at=lock_expires_at,
+            )
+            reserve_youtube_search_budget(
+                session,
+                searches=len(request.queries),
+                daily_budget=settings.youtube_daily_search_budget,
+            )
+
+        deadline_monotonic = time.monotonic() + settings.analysis_timeout_seconds
+
+        try:
+            with YouTubeClient(
+                settings.youtube_api_key,
+                timeout_seconds=settings.youtube_timeout_seconds,
+                deadline_monotonic=deadline_monotonic,
+            ) as youtube_client:
+                with session_factory.begin() as session:
+                    return run_niche_analysis(
+                        client=youtube_client,
+                        session=session,
+                        niche=request.niche,
+                        search_queries=tuple(request.queries),
+                    )
+        finally:
             with session_factory.begin() as session:
-                return run_niche_analysis(
-                    client=youtube_client,
-                    session=session,
-                    niche=request.niche,
-                    search_queries=tuple(request.queries),
-                )
+                release_analysis_lock(session, fingerprint=fingerprint)
     finally:
         engine.dispose()
 
@@ -594,12 +706,16 @@ def health_check() -> dict[str, str]:
 )
 def check_entered_niche_spelling(
     request: NicheSpellingRequest,
+    http_request: Request,
     groq_client: Annotated[
         GroqClient | None,
         Depends(get_optional_groq_client),
     ],
+    endpoint_guard: Annotated[EndpointGuard, Depends(get_endpoint_guard)],
 ) -> NicheSpellingResponse:
     """Offer only high-confidence spelling corrections before query expansion."""
+
+    endpoint_guard("niche_spelling", http_request)
 
     if groq_client is None:
         return NicheSpellingResponse(
@@ -617,9 +733,8 @@ def check_entered_niche_spelling(
         NicheSpellingError,
     ):
         LOGGER.warning(
-            "Niche spelling check failed for %r; continuing without a suggestion.",
-            request.niche,
-            exc_info=True,
+            "Niche spelling check failed; continuing without a suggestion.",
+            extra={"event": "niche_spelling_unavailable", "endpoint": "niche_spelling"},
         )
 
         return NicheSpellingResponse(
@@ -640,12 +755,16 @@ def check_entered_niche_spelling(
 )
 def generate_analysis_summary(
     request: AnalysisSummaryRequest,
+    http_request: Request,
     groq_client: Annotated[
         GroqClient | None,
         Depends(get_optional_groq_client),
     ],
+    endpoint_guard: Annotated[EndpointGuard, Depends(get_endpoint_guard)],
 ) -> AnalysisSummaryResponse:
     """Generate optional observations without rerunning the analysis pipeline."""
+
+    endpoint_guard("analysis_summary", http_request)
 
     facts = request.summary_context.to_facts()
     new_creator_signal: NewCreatorSignal = determine_new_creator_signal(facts)
@@ -666,9 +785,8 @@ def generate_analysis_summary(
             ValueError,
         ):
             LOGGER.warning(
-                "AI niche summary failed for %r; keeping the deterministic dashboard available.",
-                request.niche,
-                exc_info=True,
+                "AI niche summary failed; keeping the deterministic dashboard available.",
+                extra={"event": "analysis_summary_unavailable", "endpoint": "analysis_summary"},
             )
 
     return AnalysisSummaryResponse(
@@ -688,12 +806,16 @@ def generate_analysis_summary(
 )
 def generate_search_queries(
     request: QueryExpansionRequest,
+    http_request: Request,
     groq_client: Annotated[
         GroqClient,
         Depends(get_groq_client),
     ],
+    endpoint_guard: Annotated[EndpointGuard, Depends(get_endpoint_guard)],
 ) -> QueryExpansionResponse:
     """Generate focused YouTube searches for a niche."""
+
+    endpoint_guard("query_expansion", http_request)
 
     try:
         expansion = expand_niche_queries(
@@ -705,9 +827,9 @@ def generate_search_queries(
         GroqAPIError,
         QueryExpansionError,
     ) as error:
-        LOGGER.exception(
-            "Query expansion failed for niche %r.",
-            request.niche,
+        LOGGER.warning(
+            "Query expansion failed.",
+            extra={"event": "query_expansion_unavailable", "endpoint": "query_expansion"},
         )
 
         raise HTTPException(
@@ -728,12 +850,16 @@ def generate_search_queries(
 )
 def review_query_relevance(
     request: QueryRelevanceRequest,
+    http_request: Request,
     groq_client: Annotated[
         GroqClient,
         Depends(get_groq_client),
     ],
+    endpoint_guard: Annotated[EndpointGuard, Depends(get_endpoint_guard)],
 ) -> QueryRelevanceResponse:
     """Warn about manually changed queries that seem unrelated."""
+
+    endpoint_guard("query_relevance", http_request)
 
     try:
         review = assess_query_relevance(
@@ -771,26 +897,48 @@ def review_query_relevance(
 )
 def analyze_niche(
     request: AnalysisRequest,
+    http_request: Request,
     analysis_runner: Annotated[
         AnalysisRunner,
         Depends(get_analysis_runner),
     ],
+    endpoint_guard: Annotated[EndpointGuard, Depends(get_endpoint_guard)],
 ) -> AnalysisResponse:
     """Run NicheRadar using the approved queries."""
 
+    endpoint_guard("analysis", http_request)
+
     try:
         analysis = analysis_runner(request)
+    except DuplicateAnalysisError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An identical analysis is already running. Please wait for it to finish.",
+        ) from error
+    except YouTubeBudgetExceededError as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Today's analysis capacity has been reached. Please try again tomorrow.",
+        ) from error
+    except YouTubeDeadlineExceededError as error:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="The YouTube analysis took too long. Please try again.",
+        ) from error
     except SQLAlchemyError as error:
+        LOGGER.error(
+            "Analysis database operation failed.",
+            extra={"event": "analysis_database_failure", "endpoint": "analysis"},
+        )
         raise HTTPException(
             status_code=(status.HTTP_500_INTERNAL_SERVER_ERROR),
             detail=("Could not access the NicheRadar analysis database."),
         ) from error
     except RuntimeError as error:
         # Preserve the upstream cause in server logs without exposing it to the browser.
-        LOGGER.exception(
-            "YouTube analysis failed for niche %r with %d approved queries.",
-            request.niche,
-            len(request.queries),
+        LOGGER.error(
+            "YouTube analysis failed without completing a result.",
+            extra={"event": "analysis_upstream_failure", "endpoint": "analysis"},
         )
 
         raise HTTPException(
@@ -802,6 +950,51 @@ def analyze_niche(
         request,
         analysis,
     )
+
+
+@app.post(
+    "/api/internal/retention",
+    tags=["system"],
+)
+def run_retention_cleanup(
+    authorization: Annotated[str | None, Header()] = None,
+) -> dict[str, int]:
+    """Remove expired API data when called by the protected daily Vercel Cron."""
+
+    settings = get_settings()
+    expected_authorization = f"Bearer {settings.cron_secret}" if settings.cron_secret else None
+
+    if expected_authorization is None or authorization is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    if not secrets.compare_digest(authorization, expected_authorization):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    engine = create_database_engine(settings.database_url)
+
+    try:
+        session_factory = create_session_factory(engine)
+
+        with session_factory.begin() as session:
+            deleted_records = cleanup_expired_records(session)
+    except SQLAlchemyError as error:
+        LOGGER.error(
+            "Retention cleanup could not access the database.",
+            extra={"event": "retention_cleanup_failure", "endpoint": "retention"},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="NicheRadar is temporarily unavailable.",
+        ) from error
+    finally:
+        engine.dispose()
+
+    LOGGER.info(
+        "Retention cleanup completed.",
+        extra={"event": "retention_cleanup_completed", "endpoint": "retention"},
+    )
+
+    return deleted_records
 
 
 app.frontend(

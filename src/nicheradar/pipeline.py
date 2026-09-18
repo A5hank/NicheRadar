@@ -2,7 +2,8 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 
 from sqlalchemy.orm import Session
 
@@ -11,7 +12,7 @@ from nicheradar.collector import (
     collect_niche,
 )
 from nicheradar.ranking import rank_videos
-from nicheradar.repositories import get_videos_by_niche
+from nicheradar.repositories import get_analysis_videos_by_run
 from nicheradar.results import (
     DEFAULT_RESULT_LIMIT,
     NicheResults,
@@ -20,6 +21,23 @@ from nicheradar.results import (
 from nicheradar.youtube import YouTubeClient
 
 DEFAULT_SEARCH_LIMIT = 50
+ANALYSIS_RETENTION_DAYS = 30
+
+
+def build_analysis_fingerprint(
+    *,
+    niche: str,
+    search_queries: Sequence[str] | None,
+) -> str:
+    """Return a stable fingerprint without persisting raw request controls."""
+
+    normalized_queries = tuple(
+        " ".join(query.split()).casefold() for query in (search_queries or (niche,))
+    )
+    normalized_niche = " ".join(niche.split()).casefold()
+    serialized_request = "\x1f".join((normalized_niche, *normalized_queries))
+
+    return sha256(serialized_request.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,14 +73,17 @@ def run_niche_analysis(
         niche=niche,
         search_queries=search_queries,
         collected_at=analysis_time,
+        query_fingerprint=build_analysis_fingerprint(
+            niche=niche,
+            search_queries=search_queries,
+        ),
+        expires_at=analysis_time + timedelta(days=ANALYSIS_RETENTION_DAYS),
         max_results=search_limit,
     )
 
-    stored_videos = get_videos_by_niche(
+    stored_videos = get_analysis_videos_by_run(
         session,
-        niche=collection_summary.niche,
-        collected_date=analysis_time.date(),
-        limit=None,
+        analysis_run_id=collection_summary.analysis_run_id,
     )
 
     scored_videos = rank_videos(

@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from nicheradar.groq_client import GroqClient
+from nicheradar.groq_client import GroqAPIError, GroqClient
 from nicheradar.niche_spelling import (
     NicheSpellingError,
     check_niche_spelling,
@@ -63,6 +63,33 @@ def test_correct_niche_returns_no_suggestion() -> None:
 
     assert spelling_check.niche == "Minecraft"
     assert spelling_check.suggestion is None
+
+
+def test_web_search_failure_retries_once_without_web_search() -> None:
+    """A provider tool failure can still return a safe obvious correction."""
+
+    client = Mock(spec=GroqClient)
+    client.generate_json.side_effect = [
+        GroqAPIError("Groq API request failed: Request Entity Too Large"),
+        {
+            "is_high_confidence_typo": True,
+            "suggestion": "Cooking",
+        },
+    ]
+
+    spelling_check = check_niche_spelling(
+        client,
+        "coiking",
+    )
+
+    assert spelling_check.suggestion == "Cooking"
+    assert client.generate_json.call_count == 2
+
+    web_request, fallback_request = client.generate_json.call_args_list
+
+    assert web_request.kwargs["enable_web_search"] is True
+    assert fallback_request.kwargs["enable_web_search"] is False
+    assert "Web search is unavailable" in fallback_request.kwargs["system_prompt"]
 
 
 def test_uncommon_niche_stays_unchanged_when_not_high_confidence() -> None:

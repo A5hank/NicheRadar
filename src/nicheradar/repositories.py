@@ -5,7 +5,116 @@ from datetime import date, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from nicheradar.models import Channel, Snapshot, Video
+from nicheradar.models import (
+    AnalysisRun,
+    AnalysisSnapshot,
+    AnalysisVideo,
+    Channel,
+    Snapshot,
+    Video,
+)
+
+
+def create_analysis_run(
+    session: Session,
+    *,
+    niche: str,
+    query_fingerprint: str,
+    approved_queries: tuple[str, ...],
+    collected_at: datetime,
+    expires_at: datetime,
+) -> AnalysisRun:
+    """Stage one isolated analysis run in the current transaction."""
+
+    analysis_run = AnalysisRun(
+        niche=niche,
+        query_fingerprint=query_fingerprint,
+        approved_queries=list(approved_queries),
+        collected_at=collected_at,
+        expires_at=expires_at,
+    )
+    session.add(analysis_run)
+    session.flush()
+
+    return analysis_run
+
+
+def save_analysis_video(
+    session: Session,
+    *,
+    analysis_run_id: str,
+    video_id: str,
+    title: str,
+    url: str,
+    thumbnail_url: str | None,
+    channel_id: str,
+    channel_name: str,
+    views: int,
+    likes: int | None,
+    comments: int | None,
+    subscribers: int | None,
+    duration_seconds: int,
+    upload_date: datetime,
+    tags: tuple[str, ...] = (),
+) -> AnalysisVideo:
+    """Store a video immutable to one analysis run."""
+
+    video = AnalysisVideo(
+        analysis_run_id=analysis_run_id,
+        video_id=video_id,
+        title=title,
+        url=url,
+        thumbnail_url=thumbnail_url,
+        channel_id=channel_id,
+        channel_name=channel_name,
+        views=views,
+        likes=likes,
+        comments=comments,
+        subscribers=subscribers,
+        duration_seconds=duration_seconds,
+        tags=list(tags),
+        upload_date=upload_date,
+    )
+    session.add(video)
+
+    return video
+
+
+def save_analysis_snapshot(
+    session: Session,
+    *,
+    analysis_run_id: str,
+    video_count: int,
+    average_views: float,
+    median_views: float,
+) -> AnalysisSnapshot:
+    """Store aggregate values that belong only to one analysis run."""
+
+    snapshot = AnalysisSnapshot(
+        analysis_run_id=analysis_run_id,
+        video_count=video_count,
+        average_views=average_views,
+        median_views=median_views,
+    )
+    session.add(snapshot)
+
+    return snapshot
+
+
+def get_analysis_videos_by_run(
+    session: Session,
+    *,
+    analysis_run_id: str,
+) -> list[AnalysisVideo]:
+    """Return only the videos persisted for one exact analysis run."""
+
+    statement = (
+        select(AnalysisVideo)
+        .where(AnalysisVideo.analysis_run_id == analysis_run_id)
+        .order_by(AnalysisVideo.views.desc())
+    )
+
+    return list(session.scalars(statement))
 
 
 def upsert_channel(

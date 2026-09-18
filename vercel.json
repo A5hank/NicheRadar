@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/nicheradar/api.py": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/internal/retention",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

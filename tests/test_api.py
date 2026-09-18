@@ -16,6 +16,7 @@ from nicheradar.api import (
     AnalysisRequest,
     app,
     get_analysis_runner,
+    get_endpoint_guard,
     get_groq_client,
     get_optional_groq_client,
 )
@@ -23,6 +24,11 @@ from nicheradar.groq_client import (
     GroqAPIError,
     GroqClient,
 )
+from nicheradar.operations import (
+    DuplicateAnalysisError,
+    YouTubeBudgetExceededError,
+)
+from nicheradar.youtube import YouTubeDeadlineExceededError
 
 
 @pytest.fixture
@@ -55,9 +61,13 @@ def client(
     def override_analysis_runner() -> Mock:
         return analysis_runner
 
+    def allow_test_requests(_endpoint: str, _request: object) -> None:
+        return None
+
     app.dependency_overrides[get_groq_client] = override_groq_client
     app.dependency_overrides[get_optional_groq_client] = override_optional_groq_client
     app.dependency_overrides[get_analysis_runner] = override_analysis_runner
+    app.dependency_overrides[get_endpoint_guard] = lambda: allow_test_requests
 
     try:
         with TestClient(app) as test_client:
@@ -335,6 +345,7 @@ def test_niche_spelling_endpoint_fails_open_when_service_fails(
         "niche": "meincraft",
         "suggestion": None,
     }
+    assert groq_client.generate_json.call_count == 2
 
 
 def test_niche_spelling_endpoint_fails_open_for_malformed_service_output(
@@ -966,3 +977,46 @@ def test_analysis_endpoint_handles_runner_failure(
     assert response.json() == {
         "detail": ("Could not complete the YouTube analysis right now."),
     }
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_status", "expected_detail"),
+    [
+        (
+            DuplicateAnalysisError(),
+            409,
+            "An identical analysis is already running. Please wait for it to finish.",
+        ),
+        (
+            YouTubeBudgetExceededError(),
+            429,
+            "Today's analysis capacity has been reached. Please try again tomorrow.",
+        ),
+        (
+            YouTubeDeadlineExceededError("timed out"),
+            504,
+            "The YouTube analysis took too long. Please try again.",
+        ),
+    ],
+)
+def test_analysis_endpoint_returns_safe_hardening_errors(
+    client: TestClient,
+    analysis_runner: Mock,
+    error: RuntimeError,
+    expected_status: int,
+    expected_detail: str,
+) -> None:
+    """Duplicate, budget, and deadline failures should not expose provider details."""
+
+    analysis_runner.side_effect = error
+
+    response = client.post(
+        "/api/analyses",
+        json={
+            "niche": "Marvel",
+            "queries": ["Marvel"],
+        },
+    )
+
+    assert response.status_code == expected_status
+    assert response.json() == {"detail": expected_detail}

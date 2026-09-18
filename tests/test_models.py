@@ -46,7 +46,7 @@ def make_video(
 
 
 def test_schema_creates_all_tables() -> None:
-    """Schema creation should produce all three NicheRadar tables."""
+    """The unit-test helper should create legacy and active runtime tables."""
 
     engine = create_database_engine(
         "sqlite+pysqlite:///:memory:",
@@ -58,9 +58,15 @@ def test_schema_creates_all_tables() -> None:
         table_names = set(inspect(engine).get_table_names())
 
         assert table_names == {
+            "analysis_locks",
+            "analysis_runs",
+            "analysis_snapshots",
+            "analysis_videos",
             "channels",
+            "request_rate_limits",
             "snapshots",
             "videos",
+            "youtube_daily_budgets",
         }
     finally:
         engine.dispose()
