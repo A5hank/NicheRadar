@@ -1,0 +1,18 @@
+# Local secrets and development environments
+.env
+.env.local
+.venv/
+venv/
+env/
+
+# Local state and generated test artifacts
+data/
+.pytest_cache/
+.pytest-doc-audit-tmp/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local editor configuration
+.vscode/
+.idea/
