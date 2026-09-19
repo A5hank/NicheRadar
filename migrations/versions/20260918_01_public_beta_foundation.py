@@ -88,15 +88,15 @@ def upgrade() -> None:
         sa.Column("median_views", sa.Float(), nullable=False),
         sa.CheckConstraint(
             "video_count >= 0",
-            name="ck_analysis_snapshots_non_negative_analysis_snapshot_video_count",
+            name="ck_analysis_snapshots_non_negative_video_count",
         ),
         sa.CheckConstraint(
             "average_views >= 0",
-            name="ck_analysis_snapshots_non_negative_analysis_snapshot_average_views",
+            name="ck_analysis_snapshots_non_negative_average_views",
         ),
         sa.CheckConstraint(
             "median_views >= 0",
-            name="ck_analysis_snapshots_non_negative_analysis_snapshot_median_views",
+            name="ck_analysis_snapshots_non_negative_median_views",
         ),
         sa.ForeignKeyConstraint(
             ["analysis_run_id"],

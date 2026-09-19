@@ -1,5 +1,10 @@
 """Tests for controlled schema initialization outside request handling."""
 
+from io import StringIO
+from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import inspect
 
 from nicheradar.database import create_database_engine
@@ -28,3 +33,23 @@ def test_migrations_create_active_runtime_tables(tmp_path) -> None:
         }
     finally:
         engine.dispose()
+
+
+def test_migration_compiles_for_postgresql_without_identifier_errors() -> None:
+    """The deployment migration must respect PostgreSQL's identifier limits."""
+
+    project_root = Path(__file__).resolve().parents[1]
+    alembic_config = Config(
+        str(project_root / "alembic.ini"),
+        output_buffer=StringIO(),
+    )
+    alembic_config.set_main_option(
+        "sqlalchemy.url",
+        "postgresql+psycopg://user:password@localhost/nicheradar",
+    )
+
+    command.upgrade(
+        alembic_config,
+        "head",
+        sql=True,
+    )

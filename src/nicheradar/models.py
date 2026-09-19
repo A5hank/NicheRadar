@@ -322,14 +322,14 @@ class AnalysisSnapshot(Base):
     __tablename__ = "analysis_snapshots"
     __table_args__ = (
         UniqueConstraint("analysis_run_id", name="uq_analysis_snapshot_run"),
-        CheckConstraint("video_count >= 0", name="non_negative_analysis_snapshot_video_count"),
+        CheckConstraint("video_count >= 0", name="non_negative_video_count"),
         CheckConstraint(
             "average_views >= 0",
-            name="non_negative_analysis_snapshot_average_views",
+            name="non_negative_average_views",
         ),
         CheckConstraint(
             "median_views >= 0",
-            name="non_negative_analysis_snapshot_median_views",
+            name="non_negative_median_views",
         ),
     )
 
