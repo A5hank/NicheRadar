@@ -17,21 +17,20 @@
 
     <script>
       (() => {
-        const storageKey = "nicheradar-theme";
-        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-          .matches
-          ? "dark"
-          : "light";
+        const introSeenStorageKey = "nicheradar-brand-intro-seen";
+        const forceIntro = new URLSearchParams(window.location.search).get("intro") === "1";
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
         try {
-          const savedTheme = window.localStorage.getItem(storageKey);
+          const introSeen = window.sessionStorage.getItem(introSeenStorageKey) === "true";
 
-          document.documentElement.dataset.theme =
-            savedTheme === "light" || savedTheme === "dark"
-              ? savedTheme
-              : systemTheme;
+          if (!reducedMotion && (forceIntro || !introSeen)) {
+            document.documentElement.classList.add("brand-intro-pending");
+          }
         } catch {
-          document.documentElement.dataset.theme = systemTheme;
+          if (!reducedMotion) {
+            document.documentElement.classList.add("brand-intro-pending");
+          }
         }
       })();
     </script>
@@ -41,51 +40,47 @@
     <script src="spelling-suggestion.js" defer></script>
     <script src="analysis-summary.js" defer></script>
     <script src="app.js" defer></script>
+    <script src="intro.js" defer></script>
   </head>
 
   <body>
-    <button
-      id="theme-toggle"
-      class="theme-toggle"
-      type="button"
-      aria-label="Switch to dark mode"
-      aria-pressed="false"
-      title="Switch to dark mode"
+    <section
+      id="brand-intro"
+      class="brand-intro"
+      aria-label="NicheRadar introduction"
+      hidden
     >
-      <svg
-        class="theme-icon theme-icon-sun"
-        viewBox="0 0 24 24"
+      <canvas
+        id="brand-intro-canvas"
+        class="brand-intro-canvas"
         aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="4"></circle>
-        <path
-          d="
-            M12 2v2
-            M12 20v2
-            M4.93 4.93l1.42 1.42
-            M17.66 17.66l1.41 1.41
-            M2 12h2
-            M20 12h2
-            M4.93 19.07l1.42-1.41
-            M17.66 6.34l1.41-1.41
-          "
-        ></path>
-      </svg>
+      ></canvas>
 
-      <svg
-        class="theme-icon theme-icon-moon"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path
-          d="
-            M21 12.79
-            A9 9 0 1 1 11.21 3
-            A7 7 0 0 0 21 12.79
-          "
-        ></path>
-      </svg>
-    </button>
+      <button id="skip-brand-intro" class="skip-brand-intro" type="button">
+        Skip intro
+      </button>
+
+      <div class="brand-intro-copy" aria-live="polite">
+        <p
+          class="brand-intro-line brand-intro-line-first"
+          data-intro-text="This is an average niche."
+        ></p>
+        <p
+          class="brand-intro-line brand-intro-line-second"
+          data-intro-text="Find one where you can actually stand out."
+        ></p>
+        <div class="brand-intro-wordmark" aria-hidden="true">
+          <span>NicheRadar</span>
+        </div>
+      </div>
+
+      <p class="brand-intro-credit">
+        Crowd animation adapted from
+        <a href="https://skiper-ui.com/v1/skiper39" target="_blank" rel="noreferrer">Skiper UI</a>
+        · illustrations by
+        <a href="https://www.openpeeps.com/" target="_blank" rel="noreferrer">Open Peeps</a>
+      </p>
+    </section>
 
     <main>
       <section

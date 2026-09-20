@@ -1,43 +1,45 @@
 # NicheRadar
 
-NicheRadar is a metadata-only YouTube Shorts niche intelligence engine.
+NicheRadar is a portfolio project for researching a YouTube Shorts niche before committing to create in it. It turns recent public metadata into a reviewable search plan, ranked Short candidates, deterministic performance signals, and an optional AI-written summary.
 
-In a time where AI generated youtube channels are exploding into the scene, this will help you find the perfect niche for your AI Automation Channel, which is especially important with the YouTube monetisation changes.
+The live-analysis environment is maintained as private owner-only staging. This repository contains the application source and never contains API keys, database exports, or real user data.
 
-Given a niche such as `AI productivity`, it will identify:
+## What it does
 
-- Top-performing Shorts from the last seven days
-- Small creators outperforming their subscriber count
-- Emerging topics within the niche
-- Performance and engagement trends
-- AI-generated explanations based on structured analytics
+- Checks an entered niche for a high-confidence likely spelling error without silently changing the user's input.
+- Uses Groq to propose focused search angles, then lets the user edit and approve up to ten queries.
+- Collects recent public YouTube Shorts metadata, removes duplicates, and returns up to 50 ranked candidates.
+- Reorders the completed result set in the browser by Views/day, Total views, or Subscriber multiplier without consuming additional API quota.
+- Calculates deterministic Breakout, Exceptional, Virality Score, Confidence Score, and New-Creator Signal indicators.
+- Generates an optional Groq niche summary from completed statistics; a failure never prevents the dashboard from loading.
 
-## Project principle
+## Method
 
-NicheRadar analyzes publicly available metadata only.
+```mermaid
+flowchart LR
+    A[Enter a niche] --> B[Optional spelling suggestion]
+    B --> C[AI-assisted query expansion and user review]
+    C --> D[Recent public YouTube metadata collection]
+    D --> E[Deterministic ranking and signals]
+    E --> F[Optional AI niche summary]
+```
 
-It does not analyze:
-- Video frames
-- Audio
-- Transcripts
+Groq is assistive only: it helps with spelling suggestions, query expansion, and explaining completed analysis facts. Ranking and scoring are deterministic and do not depend on AI output.
 
-This keeps the system cheaper, faster, and focused on performance intelligence.
+## Boundaries
 
-## Technology
+NicheRadar uses public metadata returned by the YouTube Data API. It does not analyse video frames, audio, transcripts, watch time, retention, or private channel data. Results are time-bound and query-dependent; they are research support, not guarantees of growth, virality, income, or future performance.
 
-- Python 3.13
-- FastAPI and Uvicorn
-- YouTube Data API v3
-- Groq Chat Completions API
-- SQLAlchemy with SQLite by default
-- Plain HTML, CSS, and JavaScript frontend
-- Podman/Docker-compatible container configuration
+The current public-facing purpose is source review and portfolio presentation. Do not make a real-data interactive deployment broadly available until the relevant YouTube API policy, attribution, privacy, and derived-metrics requirements have been completed.
 
-## Requirements
+## Stack
 
-- Python 3.13.7 is recommended; the project accepts Python 3.13.x.
-- A YouTube Data API key.
-- A Groq API key.
+- Python 3.13, FastAPI, Uvicorn, SQLAlchemy, and Alembic
+- SQLite for local development; PostgreSQL via Neon for deployed staging
+- YouTube Data API v3 for public metadata
+- Groq for assistive AI features
+- Plain HTML, CSS, and JavaScript frontend served by FastAPI
+- Vercel Preview deployments and a Podman/Docker-compatible local container
 
 ## Local setup
 
@@ -50,39 +52,40 @@ python -m pip install -r requirements-dev.txt
 Copy-Item .env.example .env
 ```
 
-Open `.env` and add your keys:
+Set local values in `.env`:
 
 ```dotenv
 YOUTUBE_API_KEY=your_youtube_key
 GROQ_API_KEY=your_groq_key
 DATABASE_URL=sqlite:///data/nicheradar.db
 APP_ENV=development
+APP_MODE=local
 ```
 
-Do not commit `.env`; it is already ignored by Git.
+Never commit `.env` or any credential.
 
-## Run the web application
-
-Start FastAPI from the project root:
+Apply migrations, then start the app:
 
 ```powershell
+python -m nicheradar.init_db
 python -m uvicorn nicheradar.api:app --reload
 ```
 
-Then open:
+Open:
+
 - Application: <http://127.0.0.1:8000>
-- Interactive API documentation: <http://127.0.0.1:8000/docs>
+- API documentation: <http://127.0.0.1:8000/docs>
 - Health check: <http://127.0.0.1:8000/api/health>
 
-## Run a command-line analysis
+## Command-line analysis
 
-The command-line workflow uses the same Groq query expansion and YouTube analysis pipeline, then prompts you to review the generated queries:
+The command-line workflow uses the same query-expansion and YouTube-analysis pipeline, with an interactive query review:
 
 ```powershell
 python -m nicheradar.analyze "AI productivity"
 ```
 
-Optional limits are available from 1 to 50:
+Optional collection and display limits range from 1 to 50:
 
 ```powershell
 python -m nicheradar.analyze "AI productivity" --search-limit 50 --result-limit 50
@@ -92,28 +95,32 @@ python -m nicheradar.analyze "AI productivity" --search-limit 50 --result-limit 
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/health` | Confirms that the application is running. |
-| `POST` | `/api/niche-spelling` | Uses a single Groq web search to return an optional, high-confidence search suggestion before query expansion. |
+| `GET` | `/api/health` | Confirms that the application is running without calling YouTube or Groq. |
+| `POST` | `/api/niche-spelling` | Returns an optional high-confidence spelling suggestion before expansion. |
 | `POST` | `/api/queries` | Generates focused search queries for a niche. |
 | `POST` | `/api/query-relevance` | Checks manually changed queries for relevance. |
 | `POST` | `/api/analyses` | Collects metadata and returns a complete niche analysis. |
-| `POST` | `/api/analysis-summary` | Returns optional Groq observations from completed analysis facts and a deterministic new-creator signal; it never reruns YouTube analysis. |
+| `POST` | `/api/analysis-summary` | Returns optional Groq observations from completed facts and a deterministic New-Creator Signal; it never reruns collection. |
 
 ## Run with containers
 
-Create `.env` as described above, then run:
+Create `.env` as above, then run:
 
 ```powershell
 podman compose up --build
 ```
 
-The compose file exposes the application only on `127.0.0.1:8000` and persists SQLite data in the `nicheradar-data` volume.
+The local compose configuration binds the app to `127.0.0.1:8000` and persists SQLite data in the `nicheradar-data` volume.
 
-## Roadmap (What's Next)
+## Verification
 
-NicheRadar v0.9.0 is currently a "Phase One" milestone. Planned improvements include:
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+node --test frontend/tests/*.test.cjs
+```
 
-- **Historical Trend Analysis:** Transitioning from daily snapshots to visualizing engagement rate trends over time.
-- **AI Narrative Generation:** Expanding the Groq integration to write a final, comprehensive analytical report based on the collected SQLite data.
-- **Enhanced Data Pipeline:** Adding PostgreSQL support for heavier workloads and caching to reduce redundant YouTube API calls.
-- **UI/UX Polish:** Adding interactive charts for view-velocity and better mobile responsiveness.
+## License
+
+NicheRadar is licensed under the [GNU GPLv3](LICENSE).

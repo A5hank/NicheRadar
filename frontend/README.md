@@ -24,7 +24,7 @@ Do not use `python -m http.server` when testing the complete application. It can
 - The dashboard renders returned videos, breakout and exceptional-performance counts, Virality Score, and Confidence Score.
 - Once the deterministic dashboard is visible, `POST /api/analysis-summary` optionally adds three Groq observations and a deterministic new-creator signal. It never reruns YouTube collection; a slow or failed request shows `Summary unavailable` without affecting results.
 - The result-list dropdown reorders the already returned videos by Views/day, Total views, or Subscriber multiplier without making another API request. Videos without a multiplier remain at the bottom in multiplier mode.
-- The theme toggle stores the selected light or dark theme in browser local storage.
+- The interface uses a single dark theme and includes an optional first-visit brand introduction that respects reduced-motion preferences.
 - Starting a new analysis returns to the landing screen.
 
 ## Main files
@@ -35,8 +35,9 @@ Do not use `python -m http.server` when testing the complete application. It can
 | `result-ranking.js` | Pure client-side ranking helper shared by the dashboard and Node regression tests. |
 | `spelling-suggestion.js` | Pure search-suggestion safety and explicit-choice helper shared by the landing page and Node regression tests. |
 | `analysis-summary.js` | Pure summary-request and response-safety helper shared by the dashboard and Node regression tests. |
+| `intro.js` | Dependency-free first-visit crowd animation and intro timing helper. |
 | `app.js` | Browser state, validation, API requests, and dynamic rendering. |
-| `styles.css` | Application layout, colours, responsive styling, and theme rules. |
+| `styles.css` | Dark-only application layout, colours, responsive styling, and intro styling. |
 | `about.html` | The standalone About page served at `/about`. |
 | `about.js` / `about.css` | About-page interactions and styling. |
 
@@ -47,5 +48,5 @@ The browser never receives the Groq or YouTube API keys; those remain in the Pyt
 Run the dependency-free frontend regression tests from the project root:
 
 ```powershell
-node --test frontend/tests/result-ranking.test.cjs frontend/tests/spelling-suggestion.test.cjs frontend/tests/analysis-summary.test.cjs
+node --test frontend/tests/*.test.cjs
 ```

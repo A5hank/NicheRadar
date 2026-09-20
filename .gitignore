@@ -18,6 +18,7 @@ data/*.sqlite3
 
 # Testing and linting caches
 .pytest_cache/
+.pytest-*/
 .ruff_cache/
 .coverage
 htmlcov/

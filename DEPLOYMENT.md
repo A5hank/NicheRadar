@@ -1,7 +1,9 @@
-# Public limited-beta deployment
+# Private Vercel staging
 
-This repository is prepared for a later Vercel deployment, but this document
-does not deploy the application or create any remote repositories.
+NicheRadar is deployed to Vercel only as a private, owner-controlled staging
+environment. It is not a public interactive real-data service. The public
+repository is intended for portfolio source review; credentials, database
+data, and deployment secrets remain private.
 
 ## Local development
 
@@ -13,8 +15,7 @@ APP_ENV=development
 APP_MODE=local
 ```
 
-After pulling the public-beta foundation, initialize or upgrade the local
-database before starting the server:
+Initialize or upgrade the local database before starting the server:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -22,7 +23,7 @@ python -m nicheradar.init_db
 python -m uvicorn nicheradar.api:app --reload
 ```
 
-## Required Vercel environment variables
+## Required Preview environment variables
 
 Set these only in Vercel Project Settings. Never put their values in browser
 code, committed files, logs, test fixtures, screenshots, or public documents.
@@ -32,7 +33,7 @@ DATABASE_URL=postgresql+psycopg://...
 YOUTUBE_API_KEY=...
 GROQ_API_KEY=...
 APP_ENV=production
-APP_MODE=public_beta
+APP_MODE=private_staging
 CRON_SECRET=a-long-random-secret
 ```
 
@@ -53,53 +54,48 @@ RATE_LIMIT_PER_MINUTE=10
 ANALYSIS_RATE_LIMIT_PER_MINUTE=2
 ```
 
-## Pre-deployment commands
+## Initial staging setup
 
-Install the Vercel CLI, link the existing repository to a new Vercel project,
-and set the variables above through the Vercel dashboard or CLI. Do not run
-these commands until a managed PostgreSQL database exists.
+Install the Vercel CLI, link the repository to the Vercel project, and set the
+variables above for the Preview environment. Do not run the migration until a
+managed PostgreSQL database exists.
 
 ```powershell
 npm install --global vercel
 vercel login
 vercel link
-vercel env add DATABASE_URL production
-vercel env add YOUTUBE_API_KEY production
-vercel env add GROQ_API_KEY production
-vercel env add APP_ENV production
-vercel env add APP_MODE production
-vercel env add CRON_SECRET production
-vercel env add YOUTUBE_DAILY_SEARCH_BUDGET production
+vercel env add DATABASE_URL preview
+vercel env add YOUTUBE_API_KEY preview
+vercel env add GROQ_API_KEY preview
+vercel env add APP_ENV preview
+vercel env add APP_MODE preview
+vercel env add CRON_SECRET preview
+vercel env add YOUTUBE_DAILY_SEARCH_BUDGET preview
 ```
 
-Pull production variables into an ignored temporary file and run the migration
-against PostgreSQL before the first production deployment:
+Pull Preview variables into an ignored temporary file and run the migration
+against PostgreSQL before the first staging deployment:
 
 ```powershell
-vercel env pull .env.vercel.production --environment=production
-Get-Content .env.vercel.production | ForEach-Object {
+vercel env pull .env.vercel.preview --environment=preview
+Get-Content .env.vercel.preview | ForEach-Object {
   if ($_ -match '^(?<name>[^=]+)=(?<value>.*)$') {
     Set-Item -Path "Env:$($matches.name)" -Value $matches.value
   }
 }
 python -m nicheradar.init_db
-Remove-Item .env.vercel.production
+Remove-Item .env.vercel.preview
 ```
 
-Then create a preview deployment first:
+Create a Preview deployment:
 
 ```powershell
-vercel
+vercel deploy --yes
 ```
 
-Only after the preview checks pass should a public limited-beta deployment be
-created:
+Do not run `vercel --prod` for the current portfolio staging workflow.
 
-```powershell
-vercel --prod
-```
-
-## Behaviour in public beta
+## Staging safeguards
 
 - Each analysis is isolated by an immutable run ID; same-niche same-day runs
   cannot share result rows.
@@ -114,15 +110,14 @@ vercel --prod
 - A `429` response means temporary request throttling or exhausted daily
   analysis capacity; it does not reveal provider details.
 
-## Still required before broad public promotion
+## Before any public real-data release
 
-- Create the managed PostgreSQL database and verify it with a real integration
-  test. Local tests use SQLite; PostgreSQL connectivity is not exercised here.
+- Complete a real PostgreSQL integration test. Local tests use SQLite; the
+  managed database is validated by staging migration and smoke testing.
 - Restrict the Google API key to YouTube Data API usage. Do not expose it in
   the frontend.
 - Check Groq project limits and set a conservative project limit.
-- Review YouTube API compliance, attribution, Terms, Privacy Policy, consent,
-  and contact/deletion handling.
-- Audit the existing About-page GitHub/GPL source links before making the full
-  source repository private, since they currently claim that the source is
-  publicly available.
+- Complete YouTube API compliance and derived-metrics review before allowing
+  public real-data analysis.
+- Add final attribution, Terms, Privacy Policy, consent, and a contact/deletion
+  path before opening a public service.

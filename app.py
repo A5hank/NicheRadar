@@ -2,7 +2,10 @@
 
 """NicheRadar application entry point."""
 
+from nicheradar.api import app
 from nicheradar.main import main
+
+__all__ = ["app"]
 
 if __name__ == "__main__":
     main()

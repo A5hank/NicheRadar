@@ -17,73 +17,12 @@
       href="/assets/nicheradar-mark.svg"
     />
 
-    <script>
-      (() => {
-        const storageKey = "nicheradar-theme";
-        const systemTheme = window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        ).matches
-          ? "dark"
-          : "light";
-
-        try {
-          const savedTheme = window.localStorage.getItem(storageKey);
-
-          document.documentElement.dataset.theme =
-            savedTheme === "light" || savedTheme === "dark"
-              ? savedTheme
-              : systemTheme;
-        } catch {
-          document.documentElement.dataset.theme = systemTheme;
-        }
-      })();
-    </script>
-
     <link rel="stylesheet" href="/styles.css" />
-    <link rel="stylesheet" href="/about.css?v=1.0.4" />
+    <link rel="stylesheet" href="/about.css?v=1.0.5" />
     <script src="/about.js" defer></script>
   </head>
 
   <body class="about-page">
-    <button
-      id="theme-toggle"
-      class="theme-toggle"
-      type="button"
-      aria-label="Switch to dark mode"
-      aria-pressed="false"
-      title="Switch to dark mode"
-    >
-      <svg
-        class="theme-icon theme-icon-sun"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <circle cx="12" cy="12" r="4"></circle>
-        <path
-          d="
-            M12 2v2
-            M12 20v2
-            M4.93 4.93l1.42 1.42
-            M17.66 17.66l1.41 1.41
-            M2 12h2
-            M20 12h2
-            M4.93 19.07l1.42-1.41
-            M17.66 6.34l1.41-1.41
-          "
-        ></path>
-      </svg>
-
-      <svg
-        class="theme-icon theme-icon-moon"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path
-          d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
-        ></path>
-      </svg>
-    </button>
-
     <header class="about-header">
       <div class="about-header-inner">
         <a class="brand" href="/" aria-label="NicheRadar home">
@@ -342,13 +281,15 @@
               <li>Python</li>
               <li>FastAPI</li>
               <li>SQLAlchemy</li>
-              <li>SQLite</li>
+              <li>SQLite (local)</li>
+              <li>PostgreSQL / Neon (staging)</li>
               <li>Groq</li>
               <li>YouTube Data API</li>
               <li>HTML</li>
               <li>CSS</li>
               <li>JavaScript</li>
               <li>Podman</li>
+              <li>Vercel</li>
             </ul>
           </article>
 
@@ -398,11 +339,12 @@
             <h3 id="scope-title">Research support, not a guarantee of success.</h3>
           </div>
           <p class="about-scope-copy">
-            NicheRadar uses public YouTube data and an AI service for
-            query expansion and optional summaries. It is an independent
-            project, not affiliated with or endorsed by YouTube or Google.
-            Its scores and summaries support research; they do not
-            guarantee growth, virality, income or future performance.
+            NicheRadar uses public YouTube data and Groq for spelling
+            suggestions, query expansion and optional summaries. It is an
+            independent portfolio project, not affiliated with or endorsed
+            by YouTube, Google or Groq. Its live-analysis environment is
+            privately staged; its scores and summaries support research and
+            do not guarantee growth, virality, income or future performance.
           </p>
         </section>
       </section>

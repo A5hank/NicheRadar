@@ -1,27 +1,17 @@
-"""Tests for the Vercel serverless-function entrypoint."""
+"""Tests for Vercel's native FastAPI entrypoint."""
 
 import importlib.util
+import json
 from pathlib import Path
-
-import pytest
 
 from nicheradar.api import app as nicheradar_app
 
 
-@pytest.mark.parametrize(
-    "entrypoint_name",
-    [
-        "index.py",
-        "[...path].py",
-    ],
-)
-def test_vercel_entrypoint_exports_the_existing_fastapi_app(
-    entrypoint_name: str,
-) -> None:
-    """Vercel should serve the same app used by local development."""
+def test_vercel_entrypoint_exports_the_existing_fastapi_app() -> None:
+    """Vercel should discover the same app used by local development."""
 
     project_root = Path(__file__).resolve().parents[1]
-    entrypoint_path = project_root / "api" / entrypoint_name
+    entrypoint_path = project_root / "app.py"
     module_specification = importlib.util.spec_from_file_location(
         "nicheradar_vercel_entrypoint",
         entrypoint_path,
@@ -34,3 +24,12 @@ def test_vercel_entrypoint_exports_the_existing_fastapi_app(
     module_specification.loader.exec_module(module)
 
     assert module.app is nicheradar_app
+
+
+def test_vercel_configuration_uses_the_fastapi_preset() -> None:
+    """The deployment must invoke Vercel's FastAPI builder."""
+
+    project_root = Path(__file__).resolve().parents[1]
+    configuration = json.loads((project_root / "vercel.json").read_text(encoding="utf-8"))
+
+    assert configuration["framework"] == "fastapi"
