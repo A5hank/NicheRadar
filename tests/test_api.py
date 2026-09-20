@@ -169,7 +169,7 @@ def test_about_page_is_served(
     assert response.headers["content-type"].startswith("text/html")
 
     assert "<title>About NicheRadar</title>" in response.text
-    assert 'href="/about.css?v=1.0.4"' in response.text
+    assert 'href="/about.css?v=1.0.5"' in response.text
     assert 'src="/about.js"' in response.text
 
     assert "How an analysis is built" in response.text

@@ -683,7 +683,7 @@ def build_analysis_response(
 
 app = FastAPI(
     title="NicheRadar API",
-    version="0.9.0",
+    version="1.0.0",
 )
 
 
